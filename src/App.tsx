@@ -1,37 +1,43 @@
-import { Assets as NavigationAssets } from '@react-navigation/elements';
-import { DarkTheme, DefaultTheme } from '@react-navigation/native';
-import { Asset } from 'expo-asset';
-import { createURL } from 'expo-linking';
+import React, { useState, useCallback } from 'react';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import { StatusBar } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import * as React from 'react';
-import { useColorScheme } from 'react-native';
-import { Navigation } from './navigation';
-
-Asset.loadAsync([
-  ...NavigationAssets,
-  require('./assets/newspaper.png'),
-  require('./assets/bell.png'),
-]);
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { SplashScreen as CustomSplash } from './screens/auth/SplashScreen';
+import { AuthNavigator } from './navigation/AuthNavigator';
+import { AppNavigator } from './navigation/AppNavigator';
 
 SplashScreen.preventAutoHideAsync();
 
-const prefix = createURL('/');
+function RootNavigator() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const { theme } = useTheme();
+  const [showSplash, setShowSplash] = useState(true);
 
-export function App() {
-  const colorScheme = useColorScheme();
+  const handleSplashReady = useCallback(() => {
+    setShowSplash(false);
+    SplashScreen.hideAsync();
+  }, []);
 
-  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme
+  if (showSplash || isLoading) {
+    return <CustomSplash onReady={handleSplashReady} />;
+  }
 
   return (
-    <Navigation
-      theme={theme}
-      linking={{
-        enabled: 'auto',
-        prefixes: [prefix],
-      }}
-      onReady={() => {
-        SplashScreen.hideAsync();
-      }}
-    />
+    <NavigationContainer theme={theme === 'dark' ? DarkTheme : DefaultTheme}>
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} />
+      {isAuthenticated ? <AppNavigator /> : <AuthNavigator />}
+    </NavigationContainer>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
