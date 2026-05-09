@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Routes } from '../../constants/routes';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 export function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export function LoginScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const { colors } = useTheme();
+  const { promptAsync, loading: googleLoading, error: googleError } = useGoogleAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -57,7 +59,7 @@ export function LoginScreen({ navigation }: any) {
             secureTextEntry
           />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {(error || googleError) ? <Text style={styles.errorText}>{error || googleError}</Text> : null}
 
           <TouchableOpacity onPress={() => navigation.navigate(Routes.ForgotPassword)} style={styles.forgotLink}>
             <Text style={{ color: '#007AFF', fontWeight: '500' }}>Forgot Password?</Text>
@@ -71,9 +73,7 @@ export function LoginScreen({ navigation }: any) {
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-          <Button title="Continue with Google" variant="secondary" onPress={() => {}} />
-          <View style={{ height: 12 }} />
-          <Button title="Continue with Apple" variant="secondary" onPress={() => {}} />
+          <Button title="Continue with Google" variant="secondary" onPress={() => promptAsync()} loading={googleLoading} />
         </View>
 
         <View style={styles.footer}>

@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Routes } from '../../constants/routes';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 export function SignUpScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -16,6 +17,7 @@ export function SignUpScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const { register } = useAuth();
   const { colors } = useTheme();
+  const { promptAsync, loading: googleLoading, error: googleError } = useGoogleAuth();
 
   const handleSignUp = async () => {
     if (!email || !password || !displayName) {
@@ -54,7 +56,7 @@ export function SignUpScreen({ navigation }: any) {
           <Input label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} secureTextEntry />
           <Input label="Confirm Password" placeholder="Confirm your password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {(error || googleError) ? <Text style={styles.errorText}>{error || googleError}</Text> : null}
 
           <TouchableOpacity style={styles.termsRow} onPress={() => setAgreed(!agreed)}>
             <View style={[styles.checkbox, { borderColor: colors.border, backgroundColor: agreed ? '#007AFF' : 'transparent' }]}>
@@ -73,7 +75,7 @@ export function SignUpScreen({ navigation }: any) {
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
-          <Button title="Continue with Google" variant="secondary" onPress={() => {}} />
+          <Button title="Continue with Google" variant="secondary" onPress={() => promptAsync()} loading={googleLoading} />
           <View style={{ height: 12 }} />
           <Button title="Continue with Apple" variant="secondary" onPress={() => {}} />
         </View>

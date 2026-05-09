@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Routes } from '../../constants/routes';
@@ -7,6 +8,7 @@ import { Routes } from '../../constants/routes';
 export function AccountScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const menuItems = [
@@ -30,7 +32,7 @@ export function AccountScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn}>
           <Text style={{ fontSize: 20 }}>←</Text>
         </TouchableOpacity>

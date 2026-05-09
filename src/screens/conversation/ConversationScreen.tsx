@@ -8,7 +8,10 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Clipboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Speech from 'expo-speech';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
@@ -24,6 +27,7 @@ export function ConversationScreen({ route, navigation }: any) {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
+  const insets = useSafeAreaInsets();
   const myLang = getLanguageByCode(myLanguage || 'en');
   const otherLang = getLanguageByCode(otherLanguage || 'ar');
 
@@ -85,10 +89,10 @@ export function ConversationScreen({ route, navigation }: any) {
             </Text>
           </View>
           <View style={[styles.messageActions, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
-            <TouchableOpacity>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>⏺</Text>
+            <TouchableOpacity onPress={() => Speech.speak(item.translatedText, { language: item.targetLanguage })}>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>▶</Text>
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => Clipboard.setString(item.translatedText)}>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>📋</Text>
             </TouchableOpacity>
           </View>
@@ -103,9 +107,9 @@ export function ConversationScreen({ route, navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
           </TouchableOpacity>
@@ -174,7 +178,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',

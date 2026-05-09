@@ -6,8 +6,10 @@ import {
   updateProfile,
   signOut,
   sendPasswordResetEmail,
+  signInWithCredential,
   type User,
   type UserCredential,
+  type OAuthCredential,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -26,6 +28,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<UserCredential>;
+  loginWithGoogle: (credential: OAuthCredential) => Promise<UserCredential>;
   register: (email: string, password: string, displayName: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -69,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  const loginWithGoogle = async (credential: OAuthCredential) => {
+    return signInWithCredential(auth, credential);
+  };
+
   const register = async (email: string, password: string, displayName: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName });
@@ -108,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
+        loginWithGoogle,
         register,
         logout,
         resetPassword,

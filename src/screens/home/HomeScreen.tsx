@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
@@ -17,6 +18,7 @@ export function HomeScreen({ navigation }: any) {
   const [showOtherLangPicker, setShowOtherLangPicker] = useState(false);
   const [starting, setStarting] = useState(false);
 
+  const insets = useSafeAreaInsets();
   const myLang = getLanguageByCode(myLanguage);
   const otherLang = getLanguageByCode(otherLanguage);
 
@@ -58,10 +60,12 @@ export function HomeScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.brand, { color: colors.text }]}>
-          <Text style={{ color: '#FF9500' }}>🔥</Text>change
-        </Text>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <TouchableOpacity
           style={[styles.avatar, { backgroundColor: colors.surface }]}
           onPress={() => navigation.navigate(Routes.Account)}
@@ -161,12 +165,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
     paddingBottom: 8,
   },
-  brand: {
-    fontSize: 22,
-    fontWeight: '700',
+  logo: {
+    height: 32,
+    width: 120,
   },
   avatar: {
     width: 36,

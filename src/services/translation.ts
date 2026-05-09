@@ -1,15 +1,18 @@
-import { getLanguageByCode } from '../constants/languages';
-
-// Mock translation service — replace with real API (Google Cloud Translation, DeepL, etc.)
 export async function translateText(
   text: string,
   sourceLang: string,
   targetLang: string
 ): Promise<string> {
-  // In production, call your translation API here:
-  // const response = await fetch('https://translation-api.example.com/translate', {...})
-  // return response.data.translatedText
-
-  const targetName = getLanguageByCode(targetLang)?.name || targetLang;
-  return `[${targetName}] ${text}`;
+  if (!text.trim() || sourceLang === targetLang) return text;
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.responseStatus === 200 && json.responseData?.translatedText) {
+      return json.responseData.translatedText;
+    }
+    return text;
+  } catch {
+    return text;
+  }
 }
