@@ -1,9 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export function ChangeThemeScreen({ navigation }: any) {
   const { theme, setTheme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const options = [
     { key: 'light' as const, label: 'Light Mode', description: 'Standard color display with white background' },
@@ -12,9 +15,9 @@ export function ChangeThemeScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 20, color: colors.text }}>←</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Theme</Text>
         <View style={{ width: 40 }} />
@@ -31,8 +34,7 @@ export function ChangeThemeScreen({ navigation }: any) {
               <Text style={[styles.label, { color: colors.text }]}>{option.label}</Text>
               <Text style={[styles.desc, { color: colors.textSecondary }]}>{option.description}</Text>
             </View>
-            <View style={[styles.radio, { borderColor: theme === option.key ? '#007AFF' : colors.border }]}
-            >
+            <View style={[styles.radio, { borderColor: theme === option.key ? '#007AFF' : colors.border }]}>
               {theme === option.key && <View style={styles.radioDot} />}
             </View>
           </TouchableOpacity>
@@ -43,24 +45,16 @@ export function ChangeThemeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  list: {
-    paddingHorizontal: 16,
-  },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
+  list: { paddingHorizontal: 16 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -68,17 +62,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
   },
-  textCol: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  desc: {
-    fontSize: 13,
-    marginTop: 4,
-  },
+  textCol: { flex: 1 },
+  label: { fontSize: 16, fontWeight: '500' },
+  desc: { fontSize: 13, marginTop: 4 },
   radio: {
     width: 22,
     height: 22,

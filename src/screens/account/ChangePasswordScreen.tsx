@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 
 export function ChangePasswordScreen({ navigation }: any) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,9 +36,9 @@ export function ChangePasswordScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 20, color: colors.text }}>←</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Change Password</Text>
         <View style={{ width: 40 }} />
@@ -44,7 +47,7 @@ export function ChangePasswordScreen({ navigation }: any) {
       <View style={styles.content}>
         {success ? (
           <View style={styles.successBox}>
-            <Text style={{ fontSize: 48 }}>✅</Text>
+            <Ionicons name="checkmark-circle" size={64} color="#34C759" />
             <Text style={[styles.successTitle, { color: colors.text }]}>Password Changed!</Text>
           </View>
         ) : (
@@ -64,36 +67,17 @@ export function ChangePasswordScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  content: {
-    padding: 20,
-  },
-  errorText: {
-    color: '#FF3B30',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  successBox: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 16,
-  },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
+  content: { padding: 20 },
+  errorText: { color: '#FF3B30', textAlign: 'center', marginTop: 8 },
+  successBox: { alignItems: 'center', paddingVertical: 60 },
+  successTitle: { fontSize: 20, fontWeight: '600', marginTop: 16 },
 });

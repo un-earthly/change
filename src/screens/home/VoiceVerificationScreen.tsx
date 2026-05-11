@@ -7,6 +7,9 @@ import {
   setAudioModeAsync,
   RecordingPresets,
 } from 'expo-audio';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Flag } from 'react-native-country-picker-modal';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
 import { getTestPhrase } from '../../constants/phrases';
@@ -15,6 +18,7 @@ import { Button } from '../../components/common/Button';
 export function VoiceVerificationScreen({ route, navigation }: any) {
   const { languageCode, onVerified } = route.params || {};
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const lang = getLanguageByCode(languageCode);
   const phrase = getTestPhrase(languageCode);
 
@@ -24,7 +28,6 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   const [hasRecorded, setHasRecorded] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
-  // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const waveAnims = useRef([
     new Animated.Value(4),
@@ -67,16 +70,8 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   const startPulseAnimation = () => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
       ])
     ).start();
   };
@@ -85,16 +80,8 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
     waveAnims.forEach((anim, index) => {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(anim, {
-            toValue: 20 + Math.random() * 15,
-            duration: 400 + index * 100,
-            useNativeDriver: false,
-          }),
-          Animated.timing(anim, {
-            toValue: 6 + Math.random() * 8,
-            duration: 400 + index * 100,
-            useNativeDriver: false,
-          }),
+          Animated.timing(anim, { toValue: 20 + Math.random() * 15, duration: 400 + index * 100, useNativeDriver: false }),
+          Animated.timing(anim, { toValue: 6 + Math.random() * 8, duration: 400 + index * 100, useNativeDriver: false }),
         ])
       ).start();
     });
@@ -105,7 +92,6 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
       Alert.alert('Permission needed', 'Please allow microphone access in settings.');
       return;
     }
-
     if (recordState.isRecording) {
       recorder.stop();
       setHasRecorded(true);
@@ -120,9 +106,7 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   };
 
   const handleContinue = () => {
-    if (onVerified) {
-      onVerified();
-    }
+    if (onVerified) onVerified();
     navigation.goBack();
   };
 
@@ -130,9 +114,9 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Select Your language</Text>
         <View style={{ width: 40 }} />
@@ -140,7 +124,7 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
 
       <View style={styles.content}>
         <View style={[styles.langBadge, { backgroundColor: colors.surface }]}>
-          <Text style={{ fontSize: 20 }}>{lang?.flag}</Text>
+          {lang && <Flag countryCode={lang.countryCode as any} flagSize={20} withEmoji />}
           <Text style={[styles.langName, { color: colors.text }]}>{lang?.name}</Text>
         </View>
 
@@ -160,52 +144,36 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
             {waveAnims.map((anim, i) => (
               <Animated.View
                 key={i}
-                style={[
-                  styles.waveBar,
-                  {
-                    backgroundColor: '#007AFF',
-                    height: anim,
-                  },
-                ]}
+                style={[styles.waveBar, { backgroundColor: '#007AFF', height: anim }]}
               />
             ))}
           </View>
         )}
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleMicPress}
-          style={styles.micButtonContainer}
-        >
+        <TouchableOpacity activeOpacity={0.8} onPress={handleMicPress} style={styles.micButtonContainer}>
           <Animated.View
             style={[
               styles.micPulse,
-              {
-                backgroundColor: 'rgba(0,122,255,0.2)',
-                transform: [{ scale: pulseAnim }],
-                opacity: isRecording ? 1 : 0,
-              },
+              { backgroundColor: 'rgba(0,122,255,0.2)', transform: [{ scale: pulseAnim }], opacity: isRecording ? 1 : 0 },
             ]}
           />
           <View style={[styles.micButton, { backgroundColor: isRecording ? '#007AFF' : colors.surface }]}>
-            <Text style={{ fontSize: 28 }}>{isRecording ? '⏹' : '🎤'}</Text>
+            <Ionicons name={isRecording ? 'stop' : 'mic'} size={28} color={isRecording ? '#FFF' : colors.text} />
           </View>
         </TouchableOpacity>
 
         {hasRecorded && !isRecording && (
-          <Text style={[styles.successText, { color: '#34C759' }]}>✓ Voice captured!</Text>
+          <Text style={[styles.successText, { color: '#34C759' }]}>
+            <Ionicons name="checkmark-circle" size={16} color="#34C759" /> Voice captured!
+          </Text>
         )}
 
         <Text style={[styles.hint, { color: colors.textSecondary }]}>
-          {isRecording
-            ? 'Recording... tap to stop'
-            : hasRecorded
-            ? 'Tap mic to re-record'
-            : 'Tap mic to start recording'}
+          {isRecording ? 'Recording... tap to stop' : hasRecorded ? 'Tap mic to re-record' : 'Tap mic to start recording'}
         </Text>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Button
           title={hasRecorded ? 'Continue' : 'Skip for Now'}
           onPress={handleContinue}
@@ -217,27 +185,16 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
+  content: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: 20 },
   langBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -247,36 +204,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 20,
   },
-  langName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  subtitle: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  langQuote: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
-  instruction: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  phraseBox: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    marginBottom: 32,
-  },
-  phraseText: {
-    fontSize: 24,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 34,
-  },
+  langName: { fontSize: 16, fontWeight: '600' },
+  subtitle: { fontSize: 14, marginBottom: 4 },
+  langQuote: { fontSize: 22, fontWeight: '700', marginBottom: 20 },
+  instruction: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  phraseBox: { paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32 },
+  phraseText: { fontSize: 24, fontWeight: '600', textAlign: 'center', lineHeight: 34 },
   waveContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -285,23 +218,9 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: 20,
   },
-  waveBar: {
-    width: 4,
-    borderRadius: 2,
-  },
-  micButtonContainer: {
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  micPulse: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
+  waveBar: { width: 4, borderRadius: 2 },
+  micButtonContainer: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  micPulse: { position: 'absolute', width: 100, height: 100, borderRadius: 50 },
   micButton: {
     width: 72,
     height: 72,
@@ -314,17 +233,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  successText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  hint: {
-    fontSize: 13,
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 16,
-  },
+  successText: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  hint: { fontSize: 13 },
+  footer: { paddingHorizontal: 24, paddingTop: 16 },
 });

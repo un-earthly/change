@@ -1,98 +1,233 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  TextInput,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
+
+function FloatingInput({
+  label,
+  value,
+  onChangeText,
+  colors,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  colors: any;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <View
+      style={[
+        floatingStyles.container,
+        {
+          borderColor: focused ? '#007AFF' : colors.border,
+          backgroundColor: colors.background,
+        },
+      ]}
+    >
+      <Text style={[floatingStyles.label, { color: colors.textSecondary }]}>{label}</Text>
+      <TextInput
+        style={[floatingStyles.input, { color: focused ? '#007AFF' : colors.text }]}
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholderTextColor={colors.textSecondary}
+      />
+    </View>
+  );
+}
+
+const floatingStyles = StyleSheet.create({
+  container: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 12,
+    marginBottom: 14,
+  },
+  label: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  input: {
+    fontSize: 16,
+    padding: 0,
+  },
+});
 
 export function PersonalInfoScreen({ navigation }: any) {
   const { user, updateUserProfile } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [firstName, setFirstName] = useState(user?.displayName?.split(' ')[0] || '');
   const [lastName, setLastName] = useState(user?.displayName?.split(' ').slice(1).join(' ') || '');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const pickPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
-    await updateUserProfile({
-      displayName: `${firstName} ${lastName}`.trim(),
-    });
+    await updateUserProfile({ displayName: `${firstName} ${lastName}`.trim() });
     setLoading(false);
     navigation.goBack();
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 20, color: colors.text }}>←</Text>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Your Personal Information</Text>
-        <View style={{ width: 40 }} />
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Personal Information</Text>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.infoRow}>
-          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Your Email</Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>{user?.email}</Text>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Email */}
+        <View style={styles.emailSection}>
+          <Text style={[styles.emailLabel, { color: colors.textSecondary }]}>Your Email</Text>
+          <Text style={[styles.emailValue, { color: colors.text }]}>{user?.email}</Text>
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
         </View>
 
-        <View style={styles.avatarSection}>
-          <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
-            <Text style={{ fontSize: 40 }}>👤</Text>
+        {/* Profile photo */}
+        <Text style={[styles.photoLabel, { color: colors.textSecondary }]}>Profile Photo</Text>
+        <TouchableOpacity onPress={pickPhoto} style={styles.avatarWrapper} activeOpacity={0.8}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
+              <Ionicons name="person" size={32} color={colors.textSecondary} />
+            </View>
+          )}
+          <View style={styles.editBadge}>
+            <Ionicons name="pencil" size={11} color="#FFFFFF" />
           </View>
-        </View>
+        </TouchableOpacity>
 
-        <Input label="First Name" value={firstName} onChangeText={setFirstName} />
-        <Input label="Last Name (optional)" value={lastName} onChangeText={setLastName} />
-
-        <View style={{ marginTop: 24 }}>
-          <Button title="Save Information" onPress={handleSave} loading={loading} />
+        {/* Inputs */}
+        <View style={styles.fields}>
+          <FloatingInput
+            label="First Name"
+            value={firstName}
+            onChangeText={setFirstName}
+            colors={colors}
+          />
+          <FloatingInput
+            label="Last Name (optional)"
+            value={lastName}
+            onChangeText={setLastName}
+            colors={colors}
+          />
         </View>
+      </ScrollView>
+
+      {/* Fixed save button */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <Button title="Save Information" onPress={handleSave} loading={loading} />
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  backBtn: {
+    width: 32,
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
   },
-  content: {
-    padding: 20,
+  scroll: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
   },
-  infoRow: {
-    marginBottom: 20,
-  },
-  infoLabel: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  avatarSection: {
-    alignItems: 'center',
+  emailSection: {
     marginBottom: 24,
   },
+  emailLabel: {
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  emailValue: {
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
+  photoLabel: {
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  avatarWrapper: {
+    width: 64,
+    height: 64,
+    marginBottom: 28,
+  },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  avatarPlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  fields: {
+    gap: 0,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
 });

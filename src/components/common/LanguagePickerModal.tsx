@@ -10,8 +10,9 @@ import {
   Animated,
   Dimensions,
   TouchableWithoutFeedback,
-  Keyboard,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Flag } from 'react-native-country-picker-modal';
 import { useTheme } from '../../contexts/ThemeContext';
 import { LANGUAGES, type Language } from '../../constants/languages';
 
@@ -86,14 +87,14 @@ export function LanguagePickerModal({
       onPress={() => handleSelect(item)}
       activeOpacity={0.7}
     >
-      <Text style={{ fontSize: 28 }}>{item.flag}</Text>
+      <Flag countryCode={item.countryCode as any} flagSize={28} withEmoji />
       <View style={styles.langInfo}>
         <Text style={[styles.langName, { color: colors.text }]}>{item.name}</Text>
         <Text style={[styles.langNative, { color: colors.textSecondary }]}>{item.nativeName}</Text>
       </View>
       {selectedCode === item.code && (
         <View style={[styles.checkCircle, { backgroundColor: '#007AFF' }]}>
-          <Text style={styles.checkMark}>✓</Text>
+          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
         </View>
       )}
     </TouchableOpacity>
@@ -121,7 +122,7 @@ export function LanguagePickerModal({
         <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
 
         <View style={[styles.searchBox, { backgroundColor: colors.inputBackground }]}>
-          <Text style={{ fontSize: 16, marginRight: 8 }}>🔍</Text>
+          <Ionicons name="search" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search language"
@@ -132,7 +133,7 @@ export function LanguagePickerModal({
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>✕</Text>
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -222,10 +223,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  checkMark: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

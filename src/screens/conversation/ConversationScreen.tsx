@@ -11,6 +11,8 @@ import {
   Clipboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Flag } from 'react-native-country-picker-modal';
 import * as Speech from 'expo-speech';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -69,7 +71,7 @@ export function ConversationScreen({ route, navigation }: any) {
       <View style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
         {!isMe && (
           <View style={[styles.avatarSmall, { backgroundColor: colors.surface }]}>
-            <Text style={{ fontSize: 16 }}>👤</Text>
+            <Ionicons name="person" size={16} color={colors.textSecondary} />
           </View>
         )}
         <View style={styles.messageContent}>
@@ -90,16 +92,16 @@ export function ConversationScreen({ route, navigation }: any) {
           </View>
           <View style={[styles.messageActions, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
             <TouchableOpacity onPress={() => Speech.speak(item.translatedText, { language: item.targetLanguage })}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>▶</Text>
+              <Ionicons name="play" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => Clipboard.setString(item.translatedText)}>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>📋</Text>
+              <Ionicons name="copy" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
         {isMe && (
           <View style={[styles.avatarSmall, { backgroundColor: '#34C759' }]}>
-            <Text style={{ fontSize: 16 }}>✓</Text>
+            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
           </View>
         )}
       </View>
@@ -109,18 +111,18 @@ export function ConversationScreen({ route, navigation }: any) {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={{ fontSize: 24, color: colors.text }}>←</Text>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.langIndicators}>
-            <View style={styles.langChip}>
-              <Text style={{ fontSize: 14 }}>{myLang?.flag}</Text>
+            <View style={[styles.langChip, { backgroundColor: colors.surface }]}>
+              <Flag countryCode={myLang?.countryCode as any} flagSize={14} withEmoji />
               <Text style={[styles.langChipText, { color: colors.text }]}>{myLang?.name}</Text>
             </View>
-            <Text style={{ color: colors.textSecondary }}>⇄</Text>
-            <View style={styles.langChip}>
-              <Text style={{ fontSize: 14 }}>{otherLang?.flag}</Text>
+            <Ionicons name="swap-horizontal" size={18} color={colors.textSecondary} />
+            <View style={[styles.langChip, { backgroundColor: colors.surface }]}>
+              <Flag countryCode={otherLang?.countryCode as any} flagSize={14} withEmoji />
               <Text style={[styles.langChipText, { color: colors.text }]}>{otherLang?.name}</Text>
             </View>
           </View>
@@ -143,9 +145,9 @@ export function ConversationScreen({ route, navigation }: any) {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
-        <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
           <TouchableOpacity>
-            <Text style={{ fontSize: 24 }}>😊</Text>
+            <Ionicons name="happy-outline" size={26} color={colors.textSecondary} />
           </TouchableOpacity>
           <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground }]}>
             <TextInput
@@ -159,8 +161,8 @@ export function ConversationScreen({ route, navigation }: any) {
             />
           </View>
           <TouchableOpacity onPress={handleSend} disabled={sending || !inputText.trim()}>
-            <View style={[styles.sendBtn, { backgroundColor: inputText.trim() && !sending ? '#007AFF' : colors.surfaceHighlight }]}>
-              <Text style={{ color: inputText.trim() && !sending ? '#FFF' : colors.textSecondary, fontSize: 16 }}>➤</Text>
+            <View style={[styles.sendBtn, { backgroundColor: inputText.trim() && !sending ? '#007AFF' : colors.surface }]}>
+              <Ionicons name="send" size={16} color={inputText.trim() && !sending ? '#FFF' : colors.textSecondary} />
             </View>
           </TouchableOpacity>
         </View>
@@ -180,7 +182,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
   },
   langIndicators: {
     flexDirection: 'row',
@@ -191,7 +192,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F2F2F7',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
   },
   inputWrapper: {

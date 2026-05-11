@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
@@ -18,6 +19,7 @@ export function SignUpScreen({ navigation }: any) {
   const { register } = useAuth();
   const { colors } = useTheme();
   const { promptAsync, loading: googleLoading, error: googleError } = useGoogleAuth();
+  const insets = useSafeAreaInsets();
 
   const handleSignUp = async () => {
     if (!email || !password || !displayName) {
@@ -44,7 +46,7 @@ export function SignUpScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, paddingTop: insets.top }}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={{ fontSize: 64 }}>🗣️</Text>
@@ -80,7 +82,7 @@ export function SignUpScreen({ navigation }: any) {
           <Button title="Continue with Apple" variant="secondary" onPress={() => {}} />
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
           <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate(Routes.Login)}>
             <Text style={{ color: '#007AFF', fontWeight: '600' }}>Log In</Text>

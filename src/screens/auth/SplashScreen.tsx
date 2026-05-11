@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export function SplashScreen({ onReady }: { onReady: () => void }) {
   const { isLoading, isAuthenticated } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!isLoading) {
@@ -23,7 +25,7 @@ export function SplashScreen({ onReady }: { onReady: () => void }) {
         <Text style={styles.title}>Translator</Text>
         <Text style={styles.subtitle}>Language is unbounded</Text>
       </View>
-      <View style={styles.loader}>
+      <View style={[styles.loader, { bottom: insets.bottom + 40 }]}>
         <View style={styles.spinner} />
       </View>
     </View>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
@@ -13,6 +15,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const { resetPassword } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const handleSend = async () => {
     if (!email) {
@@ -32,10 +35,10 @@ export function ForgotPasswordScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, paddingTop: insets.top }}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={{ fontSize: 48 }}>🔑</Text>
+          <Ionicons name="key" size={56} color="#007AFF" />
           <Text style={[styles.title, { color: colors.text }]}>Forgot Your Password?</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Enter the email associated with your account and we will send an email with instructions to reset your password.
@@ -51,7 +54,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
             </>
           ) : (
             <View style={styles.successBox}>
-              <Text style={{ fontSize: 48, marginBottom: 16 }}>📧</Text>
+              <Ionicons name="mail" size={56} color="#007AFF" />
               <Text style={[styles.successTitle, { color: colors.text }]}>Check Your Email</Text>
               <Text style={[styles.successText, { color: colors.textSecondary }]}>
                 We have sent a password reset link to {email}
@@ -88,26 +91,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
   },
-  form: {
-    width: '100%',
-  },
-  errorText: {
-    color: '#FF3B30',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  successBox: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  successText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  form: { width: '100%' },
+  errorText: { color: '#FF3B30', marginBottom: 12, textAlign: 'center' },
+  successBox: { alignItems: 'center', paddingVertical: 24 },
+  successTitle: { fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  successText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Flag } from 'react-native-country-picker-modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
@@ -28,7 +30,6 @@ export function HomeScreen({ navigation }: any) {
   const handleMyLanguageSelect = useCallback(
     (lang: Language) => {
       setMyLanguage(lang.code);
-      // Navigate to voice verification after selecting own language
       navigation.navigate('VoiceVerification', {
         languageCode: lang.code,
         onVerified: () => {},
@@ -59,82 +60,82 @@ export function HomeScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <TouchableOpacity
-          style={[styles.avatar, { backgroundColor: colors.surface }]}
-          onPress={() => navigation.navigate(Routes.Account)}
-        >
-          <Text style={{ fontSize: 20 }}>👤</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <TouchableOpacity
+            style={[styles.avatar, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate(Routes.Account)}
+          >
+            <Ionicons name="person" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.content}>
-        {/* My Language */}
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Select Your language</Text>
-        <TouchableOpacity
-          style={[styles.picker, { backgroundColor: colors.surface }]}
-          onPress={openMyLanguagePicker}
-          activeOpacity={0.8}
-        >
-          {myLang ? (
-            <>
-              <Text style={{ fontSize: 20 }}>{myLang.flag}</Text>
-              <Text style={[styles.pickerText, { color: colors.text }]}>{myLang.name}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>⌄</Text>
-            </>
-          ) : (
-            <>
-              <Text style={{ fontSize: 20 }}>🌐</Text>
-              <Text style={[styles.pickerText, { color: colors.textSecondary }]}>Select Language</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>⌄</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <View style={styles.content}>
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Select Your language</Text>
+          <TouchableOpacity
+            style={[styles.picker, { backgroundColor: colors.surface }]}
+            onPress={openMyLanguagePicker}
+            activeOpacity={0.8}
+          >
+            {myLang ? (
+              <>
+                <Flag countryCode={myLang.countryCode as any} flagSize={20} withEmoji />
+                <Text style={[styles.pickerText, { color: colors.text }]}>{myLang.name}</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              </>
+            ) : (
+              <>
+                <Ionicons name="globe" size={20} color={colors.textSecondary} />
+                <Text style={[styles.pickerText, { color: colors.textSecondary }]}>Select Language</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              </>
+            )}
+          </TouchableOpacity>
 
-        {/* Divider icon */}
-        <View style={styles.dividerIcon}>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          <View style={[styles.micIcon, { backgroundColor: colors.surface }]}>
-            <Text style={{ fontSize: 16 }}>🎙️</Text>
+          <View style={styles.dividerIcon}>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View style={[styles.micIcon, { backgroundColor: colors.surface }]}>
+              <Ionicons name="mic" size={18} color={colors.text} />
+            </View>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
-          <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+
+          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Select Next Person's language</Text>
+          <TouchableOpacity
+            style={[styles.picker, { backgroundColor: colors.surface }]}
+            onPress={openOtherLanguagePicker}
+            activeOpacity={0.8}
+          >
+            {otherLang ? (
+              <>
+                <Flag countryCode={otherLang.countryCode as any} flagSize={20} withEmoji />
+                <Text style={[styles.pickerText, { color: colors.text }]}>{otherLang.name}</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              </>
+            ) : (
+              <>
+                <Ionicons name="globe" size={20} color={colors.textSecondary} />
+                <Text style={[styles.pickerText, { color: colors.textSecondary }]}>Select Language</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              </>
+            )}
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
+
+          <Button title={starting ? 'Starting...' : 'Start Conversation'} onPress={startConversation} loading={starting} />
         </View>
+      </ScrollView>
 
-        {/* Other Person's Language */}
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Select Next Person's language</Text>
-        <TouchableOpacity
-          style={[styles.picker, { backgroundColor: colors.surface }]}
-          onPress={openOtherLanguagePicker}
-          activeOpacity={0.8}
-        >
-          {otherLang ? (
-            <>
-              <Text style={{ fontSize: 20 }}>{otherLang.flag}</Text>
-              <Text style={[styles.pickerText, { color: colors.text }]}>{otherLang.name}</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>⌄</Text>
-            </>
-          ) : (
-            <>
-              <Text style={{ fontSize: 20 }}>🌐</Text>
-              <Text style={[styles.pickerText, { color: colors.textSecondary }]}>Select Language</Text>
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>⌄</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-
-        <Button title={starting ? 'Starting...' : 'Start Conversation'} onPress={startConversation} loading={starting} />
-
-        <View style={[styles.adBanner, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.adText, { color: colors.textSecondary }]}>Test Ad</Text>
-        </View>
+      {/* Fixed ad banner — swap View for your AdMob component when ready */}
+      <View style={[styles.adBanner, { backgroundColor: colors.surface, paddingBottom: insets.bottom }]}>
+        <Text style={[styles.adText, { color: colors.textSecondary }]}>Advertisement</Text>
       </View>
 
       <LanguagePickerModal
@@ -152,13 +153,16 @@ export function HomeScreen({ navigation }: any) {
         selectedCode={otherLanguage}
         title="Select Next Person's language"
       />
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
@@ -220,14 +224,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   adBanner: {
-    marginTop: 32,
-    height: 80,
-    borderRadius: 12,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#C7C7CC',
   },
   adText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
   },
 });

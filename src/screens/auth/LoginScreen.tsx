@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
@@ -15,6 +16,7 @@ export function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
   const { colors } = useTheme();
   const { promptAsync, loading: googleLoading, error: googleError } = useGoogleAuth();
+  const insets = useSafeAreaInsets();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,7 +35,7 @@ export function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, paddingTop: insets.top }}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.illustration}>
@@ -76,7 +78,7 @@ export function LoginScreen({ navigation }: any) {
           <Button title="Continue with Google" variant="secondary" onPress={() => promptAsync()} loading={googleLoading} />
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
           <Text style={{ color: colors.textSecondary }}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate(Routes.SignUp)}>
             <Text style={{ color: '#007AFF', fontWeight: '600' }}>Sign Up</Text>

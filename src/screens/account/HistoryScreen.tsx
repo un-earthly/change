@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Flag } from 'react-native-country-picker-modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
@@ -8,6 +11,7 @@ import { getUserMessages, type Message } from '../../services/firestore';
 export function HistoryScreen({ navigation }: any) {
   const { user } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [history, setHistory] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,9 +31,9 @@ export function HistoryScreen({ navigation }: any) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 20, color: colors.text }}>←</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>History</Text>
         <View style={{ width: 40 }} />
@@ -51,12 +55,12 @@ export function HistoryScreen({ navigation }: any) {
                 <View key={item.id} style={[styles.card, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
                   <View style={styles.langRow}>
                     <View style={[styles.langBadge, { backgroundColor: colors.surface }]}>
-                      <Text style={{ fontSize: 12 }}>{fromLang?.flag}</Text>
+                      {fromLang && <Flag countryCode={fromLang.countryCode as any} flagSize={12} withEmoji />}
                       <Text style={[styles.langText, { color: colors.text }]}>{fromLang?.name}</Text>
                     </View>
-                    <Text style={{ color: colors.textSecondary }}>→</Text>
+                    <Ionicons name="arrow-forward" size={14} color={colors.textSecondary} />
                     <View style={[styles.langBadge, { backgroundColor: colors.surface }]}>
-                      <Text style={{ fontSize: 12 }}>{toLang?.flag}</Text>
+                      {toLang && <Flag countryCode={toLang.countryCode as any} flagSize={12} withEmoji />}
                       <Text style={[styles.langText, { color: colors.text }]}>{toLang?.name}</Text>
                     </View>
                   </View>
@@ -74,30 +78,17 @@ export function HistoryScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 8,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  list: {
-    padding: 16,
-    gap: 12,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 40,
-    fontSize: 16,
-  },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
+  list: { padding: 16, gap: 12 },
+  emptyText: { textAlign: 'center', marginTop: 40, fontSize: 16 },
   card: {
     borderRadius: 12,
     padding: 16,
@@ -117,20 +108,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  langText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  original: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  translated: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  time: {
-    fontSize: 12,
-  },
+  langText: { fontSize: 13, fontWeight: '500' },
+  original: { fontSize: 15, fontWeight: '500', marginBottom: 4 },
+  translated: { fontSize: 14, marginBottom: 8 },
+  time: { fontSize: 12 },
 });

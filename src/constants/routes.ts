@@ -7,8 +7,7 @@ export const Routes = {
   OTP: 'OTP',
   ResetPassword: 'ResetPassword',
 
-  // Main Tabs
-  HomeTabs: 'HomeTabs',
+  // Main
   Home: 'Home',
   Account: 'Account',
 

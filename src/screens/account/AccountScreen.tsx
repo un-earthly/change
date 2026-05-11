@@ -1,9 +1,25 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Routes } from '../../constants/routes';
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+interface MenuItem {
+  label: string;
+  iconName: IoniconName;
+  value?: string;
+  screen: string;
+  danger?: boolean;
+}
+
+interface Section {
+  title: string;
+  items: MenuItem[];
+}
 
 export function AccountScreen({ navigation }: any) {
   const { user, logout } = useAuth();
@@ -11,19 +27,42 @@ export function AccountScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const menuItems = [
-    { section: 'ACCOUNT INFORMATION', items: [
-      { label: 'Personal Information', icon: '📝', screen: Routes.PersonalInfo },
-      { label: 'History', icon: '📜', screen: Routes.History },
-    ]},
-    { section: 'ACCOUNT SECURITY', items: [
-      { label: 'Change Password', icon: '🔒', screen: Routes.ChangePassword },
-    ]},
-    { section: 'APPLICATION SETTING', items: [
-      { label: 'Preferred Language', icon: '🌐', value: user?.preferredLanguage || 'English', screen: Routes.ChangeLanguage },
-      { label: 'Theme', icon: '🎨', value: 'Light', screen: Routes.ChangeTheme },
-    ]},
+  const sections: Section[] = [
+    {
+      title: 'ACCOUNT INFORMATION',
+      items: [
+        { label: 'Personal Information', iconName: 'person-circle-outline', screen: Routes.PersonalInfo },
+        { label: 'History', iconName: 'time-outline', screen: Routes.History },
+      ],
+    },
+    {
+      title: 'ACCOUNT SECURITY',
+      items: [
+        { label: 'Change Password', iconName: 'lock-closed-outline', screen: Routes.ChangePassword },
+      ],
+    },
+    {
+      title: 'APPLICATION SETTING',
+      items: [
+        { label: 'Preferred Language', iconName: 'language-outline', value: user?.preferredLanguage || 'English', screen: Routes.ChangeLanguage },
+        { label: 'Theme', iconName: 'sunny-outline', value: 'Light', screen: Routes.ChangeTheme },
+      ],
+    },
+    {
+      title: 'OTHER',
+      items: [
+        { label: 'Logout', iconName: 'exit-outline', screen: '', danger: true },
+      ],
+    },
   ];
+
+  const handleItemPress = (item: MenuItem) => {
+    if (item.danger) {
+      setShowLogoutModal(true);
+    } else {
+      navigation.navigate(item.screen);
+    }
+  };
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
@@ -31,60 +70,88 @@ export function AccountScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn}>
-          <Text style={{ fontSize: 20 }}>←</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Account</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <View style={styles.profile}>
-        <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
-          <Text style={{ fontSize: 36 }}>👤</Text>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Account</Text>
+          <View style={{ width: 40 }} />
         </View>
-        <Text style={[styles.name, { color: colors.text }]}>{user?.displayName || 'User'}</Text>
-        <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || ''}</Text>
-      </View>
 
-      {menuItems.map((section) => (
-        <View key={section.section} style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{section.section}</Text>
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            {section.items.map((item, idx) => (
-              <TouchableOpacity
-                key={item.label}
-                style={[
-                  styles.menuItem,
-                  idx < section.items.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
-                ]}
-                onPress={() => navigation.navigate(item.screen)}
-              >
-                <Text style={{ fontSize: 18 }}>{item.icon}</Text>
-                <Text style={[styles.menuLabel, { color: colors.text }]}>{item.label}</Text>
-                {'value' in item && item.value ? <Text style={[styles.menuValue, { color: colors.textSecondary }]}>{item.value}</Text> : null}
-                <Text style={{ color: colors.textSecondary }}>›</Text>
-              </TouchableOpacity>
-            ))}
+        {/* Profile card */}
+        <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.avatarCircle, { backgroundColor: colors.surface }]}>
+            <Ionicons name="person" size={28} color={colors.textSecondary} />
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>
+              {user?.displayName || 'User'}
+            </Text>
+            <Text style={[styles.profileEmail, { color: colors.textSecondary }]} numberOfLines={1}>
+              {user?.email || ''}
+            </Text>
           </View>
         </View>
-      ))}
 
-      <TouchableOpacity style={[styles.logoutItem, { borderBottomColor: colors.border }]} onPress={() => setShowLogoutModal(true)}>
-        <Text style={{ fontSize: 18 }}>🚪</Text>
-        <Text style={[styles.logoutText, { color: '#FF3B30' }]}>Logout</Text>
-        <Text style={{ color: colors.textSecondary }}>›</Text>
-      </TouchableOpacity>
+        {/* Sections */}
+        {sections.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              {section.title}
+            </Text>
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
+              {section.items.map((item, idx) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[
+                    styles.row,
+                    idx < section.items.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                  ]}
+                  onPress={() => handleItemPress(item)}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons
+                    name={item.iconName}
+                    size={20}
+                    color={item.danger ? '#FF3B30' : colors.textSecondary}
+                    style={styles.rowIcon}
+                  />
+                  <Text style={[styles.rowLabel, { color: item.danger ? '#FF3B30' : colors.text }]}>
+                    {item.label}
+                  </Text>
+                  {item.value ? (
+                    <View style={[styles.valueBadge, { backgroundColor: colors.surface }]}>
+                      <Text style={[styles.valueText, { color: colors.textSecondary }]}>
+                        {item.value}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={item.danger ? '#FF3B30' : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
 
+        <View style={{ height: 32 }} />
+      </ScrollView>
+
+      {/* Logout confirm modal */}
       <Modal visible={showLogoutModal} transparent animationType="fade">
-        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
           <View style={[styles.modal, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Are you sure you want to leave?</Text>
             <Text style={[styles.modalText, { color: colors.textSecondary }]}>
               You must log in again if you want to use this application.
             </Text>
-            <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: '#FF3B30' }]} onPress={handleLogout}>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Text style={styles.logoutBtnText}>Log Out</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowLogoutModal(false)}>
@@ -93,21 +160,22 @@ export function AccountScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
+  },
+  scroll: {
+    paddingHorizontal: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 16,
   },
   backBtn: {
     width: 40,
@@ -118,67 +186,71 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  profile: {
+  profileCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 24,
+    gap: 14,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  avatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  name: {
-    fontSize: 20,
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 17,
     fontWeight: '600',
+    marginBottom: 2,
   },
-  email: {
-    fontSize: 14,
-    marginTop: 4,
+  profileEmail: {
+    fontSize: 13,
   },
   section: {
-    marginBottom: 24,
-    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: 8,
     marginLeft: 4,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  menuItem: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
   },
-  menuLabel: {
-    flex: 1,
-    fontSize: 16,
+  rowIcon: {
+    width: 22,
+    textAlign: 'center',
   },
-  menuValue: {
-    fontSize: 14,
+  rowLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '400',
+  },
+  valueBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
     marginRight: 4,
   },
-  logoutItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    gap: 12,
-    marginBottom: 40,
-  },
-  logoutText: {
-    flex: 1,
-    fontSize: 16,
+  valueText: {
+    fontSize: 13,
+    fontWeight: '400',
   },
   modalOverlay: {
     flex: 1,
@@ -208,6 +280,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 48,
     borderRadius: 24,
+    backgroundColor: '#FF3B30',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
