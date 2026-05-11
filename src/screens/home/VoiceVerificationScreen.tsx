@@ -1,5 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Alert,
+  Dimensions,
+  ScrollView,
+} from 'react-native';
 import {
   useAudioRecorder,
   useAudioRecorderState,
@@ -13,7 +22,9 @@ import { Flag } from 'react-native-country-picker-modal';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
 import { getTestPhrase } from '../../constants/phrases';
-import { Button } from '../../components/common/Button';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_HEIGHT = SCREEN_HEIGHT * 0.78;
 
 export function VoiceVerificationScreen({ route, navigation }: any) {
   const { languageCode, onVerified } = route.params || {};
@@ -28,14 +39,10 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   const [hasRecorded, setHasRecorded] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const waveAnims = useRef([
-    new Animated.Value(4),
-    new Animated.Value(8),
-    new Animated.Value(6),
-    new Animated.Value(10),
-    new Animated.Value(5),
-  ]).current;
+  const glowAnim = useRef(new Animated.Value(1)).current;
+  const waveAnims = useRef(
+    Array.from({ length: 5 }, (_, i) => new Animated.Value(4 + i))
+  ).current;
 
   useEffect(() => {
     setupAudio();
@@ -43,45 +50,41 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
 
   useEffect(() => {
     if (recordState.isRecording) {
-      startPulseAnimation();
+      startGlowAnimation();
       startWaveAnimation();
     } else {
-      pulseAnim.setValue(1);
-      waveAnims.forEach((a) => a.setValue(4));
+      glowAnim.stopAnimation();
+      glowAnim.setValue(1);
+      waveAnims.forEach((a) => { a.stopAnimation(); a.setValue(4); });
     }
   }, [recordState.isRecording]);
 
   const setupAudio = async () => {
     try {
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       const { granted } = await requestRecordingPermissionsAsync();
       setPermissionGranted(granted);
-      if (!granted) {
-        Alert.alert('Permission needed', 'Please allow microphone access to record.');
-      }
+      if (!granted) Alert.alert('Permission needed', 'Please allow microphone access to record.');
     } catch (err) {
       console.error('Audio setup failed:', err);
     }
   };
 
-  const startPulseAnimation = () => {
+  const startGlowAnimation = () => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.3, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 1.35, duration: 700, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
       ])
     ).start();
   };
 
   const startWaveAnimation = () => {
-    waveAnims.forEach((anim, index) => {
+    waveAnims.forEach((anim, i) => {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(anim, { toValue: 20 + Math.random() * 15, duration: 400 + index * 100, useNativeDriver: false }),
-          Animated.timing(anim, { toValue: 6 + Math.random() * 8, duration: 400 + index * 100, useNativeDriver: false }),
+          Animated.timing(anim, { toValue: 18 + i * 3, duration: 350 + i * 80, useNativeDriver: false }),
+          Animated.timing(anim, { toValue: 5 + i * 2, duration: 350 + i * 80, useNativeDriver: false }),
         ])
       ).start();
     });
@@ -113,127 +116,197 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   const isRecording = recordState.isRecording;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Select Your language</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.overlay}>
+      {/* Tappable backdrop */}
+      <TouchableOpacity style={styles.backdrop} onPress={handleContinue} activeOpacity={1} />
 
-      <View style={styles.content}>
-        <View style={[styles.langBadge, { backgroundColor: colors.surface }]}>
-          {lang && <Flag countryCode={lang.countryCode as any} flagSize={20} withEmoji />}
-          <Text style={[styles.langName, { color: colors.text }]}>{lang?.name}</Text>
-        </View>
+      {/* Bottom sheet */}
+      <View style={[styles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
+        {/* Title */}
+        <Text style={[styles.sheetTitle, { color: colors.textSecondary }]}>Select Your language</Text>
 
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>As You have Selected</Text>
-        <Text style={[styles.langQuote, { color: colors.text }]}>"{lang?.name}"</Text>
-
-        <Text style={[styles.instruction, { color: colors.textSecondary }]}>
-          Tap the below Button &{'\n'}Please Say the below Line{'\n'}in "{lang?.name}" clearly
-        </Text>
-
-        <View style={styles.phraseBox}>
-          <Text style={[styles.phraseText, { color: colors.text }]}>{phrase}</Text>
-        </View>
-
-        {isRecording && (
-          <View style={styles.waveContainer}>
-            {waveAnims.map((anim, i) => (
-              <Animated.View
-                key={i}
-                style={[styles.waveBar, { backgroundColor: '#007AFF', height: anim }]}
-              />
-            ))}
-          </View>
-        )}
-
-        <TouchableOpacity activeOpacity={0.8} onPress={handleMicPress} style={styles.micButtonContainer}>
-          <Animated.View
-            style={[
-              styles.micPulse,
-              { backgroundColor: 'rgba(0,122,255,0.2)', transform: [{ scale: pulseAnim }], opacity: isRecording ? 1 : 0 },
-            ]}
-          />
-          <View style={[styles.micButton, { backgroundColor: isRecording ? '#007AFF' : colors.surface }]}>
-            <Ionicons name={isRecording ? 'stop' : 'mic'} size={28} color={isRecording ? '#FFF' : colors.text} />
-          </View>
-        </TouchableOpacity>
-
-        {hasRecorded && !isRecording && (
-          <Text style={[styles.successText, { color: '#34C759' }]}>
-            <Ionicons name="checkmark-circle" size={16} color="#34C759" /> Voice captured!
-          </Text>
-        )}
-
-        <Text style={[styles.hint, { color: colors.textSecondary }]}>
-          {isRecording ? 'Recording... tap to stop' : hasRecorded ? 'Tap mic to re-record' : 'Tap mic to start recording'}
-        </Text>
-      </View>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button
-          title={hasRecorded ? 'Continue' : 'Skip for Now'}
+        {/* Language row */}
+        <TouchableOpacity
+          style={[styles.langRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleContinue}
-          variant={hasRecorded ? 'primary' : 'secondary'}
-        />
+          activeOpacity={0.8}
+        >
+          {lang ? (
+            <Flag countryCode={lang.countryCode as any} flagSize={22} withEmoji />
+          ) : (
+            <View style={styles.sparkleBox}>
+              <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+            </View>
+          )}
+          <Text style={[styles.langRowText, { color: colors.text }]}>{lang?.name ?? 'Select Language'}</Text>
+          <Ionicons name="chevron-up" size={16} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <Text style={[styles.asSelected, { color: colors.text }]}>As You have Selected</Text>
+
+          {/* Large flag */}
+          {lang && (
+            <View style={styles.bigFlagWrap}>
+              <Flag countryCode={lang.countryCode as any} flagSize={48} withEmoji />
+            </View>
+          )}
+
+          <Text style={[styles.langQuote, { color: colors.text }]}>"{lang?.name}"</Text>
+
+          <Text style={[styles.instruction, { color: colors.textSecondary }]}>
+            {'Tap the below Button &\nPlease Say the below Line\nin '}
+            <Text style={{ fontStyle: 'italic' }}>"{lang?.name}"</Text>
+            {' clearly'}
+          </Text>
+
+          <Text style={[styles.phraseText, { color: isRecording ? '#007AFF' : colors.text }]}>
+            {phrase ? `"${phrase}"` : ''}
+          </Text>
+
+          {/* Mic button with glow */}
+          <View style={styles.micContainer}>
+            <Animated.View
+              style={[
+                styles.micGlow,
+                { transform: [{ scale: glowAnim }], opacity: isRecording ? 0.3 : 0.15 },
+              ]}
+            />
+            <TouchableOpacity style={styles.micButton} onPress={handleMicPress} activeOpacity={0.85}>
+              {isRecording ? (
+                <View style={styles.waveContainer}>
+                  {waveAnims.map((anim, i) => (
+                    <Animated.View
+                      key={i}
+                      style={[styles.waveBar, { height: anim }]}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <Ionicons name="mic" size={28} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Skip / Continue */}
+          <TouchableOpacity onPress={handleContinue} style={styles.skipBtn}>
+            <Text style={[styles.skipText, { color: hasRecorded ? '#007AFF' : colors.textSecondary }]}>
+              {hasRecorded ? 'Continue' : 'Skip for now'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
-  headerTitle: { fontSize: 17, fontWeight: '600' },
-  content: { flex: 1, alignItems: 'center', paddingHorizontal: 24, paddingTop: 20 },
-  langBadge: {
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    height: SHEET_HEIGHT,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  sheetTitle: { fontSize: 14, textAlign: 'center', marginBottom: 12 },
+
+  langRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+    marginBottom: 4,
+  },
+  sparkleBox: {
+    width: 40,
+    height: 27,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  langRowText: { flex: 1, fontSize: 16, fontWeight: '500' },
+
+  content: { alignItems: 'center', paddingTop: 16, paddingBottom: 8 },
+
+  asSelected: { fontSize: 15, fontWeight: '500', marginBottom: 12 },
+
+  bigFlagWrap: { marginBottom: 8 },
+
+  langQuote: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+
+  instruction: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
     marginBottom: 20,
   },
-  langName: { fontSize: 16, fontWeight: '600' },
-  subtitle: { fontSize: 14, marginBottom: 4 },
-  langQuote: { fontSize: 22, fontWeight: '700', marginBottom: 20 },
-  instruction: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  phraseBox: { paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32 },
-  phraseText: { fontSize: 24, fontWeight: '600', textAlign: 'center', lineHeight: 34 },
+
+  phraseText: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 34,
+    marginBottom: 28,
+  },
+
+  micContainer: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  micGlow: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#007AFF',
+  },
+  micButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
   waveContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    height: 40,
-    marginBottom: 20,
+    gap: 3,
+    height: 36,
   },
-  waveBar: { width: 4, borderRadius: 2 },
-  micButtonContainer: { width: 100, height: 100, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  micPulse: { position: 'absolute', width: 100, height: 100, borderRadius: 50 },
-  micButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+  waveBar: {
+    width: 3.5,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
   },
-  successText: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
-  hint: { fontSize: 13 },
-  footer: { paddingHorizontal: 24, paddingTop: 16 },
+
+  skipBtn: { paddingVertical: 8 },
+  skipText: { fontSize: 15, fontWeight: '500' },
 });

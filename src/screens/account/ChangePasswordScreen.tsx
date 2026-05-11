@@ -1,10 +1,105 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
+
+function SecureInput({
+  label,
+  value,
+  onChangeText,
+  colors,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  colors: any;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <View
+      style={[
+        inputStyles.container,
+        {
+          borderColor: focused ? '#007AFF' : colors.border,
+          backgroundColor: colors.background,
+        },
+      ]}
+    >
+      <Ionicons
+        name="lock-closed-outline"
+        size={18}
+        color={focused ? '#007AFF' : colors.textSecondary}
+        style={inputStyles.leftIcon}
+      />
+      <View style={inputStyles.middle}>
+        <Text style={[inputStyles.label, { color: colors.textSecondary }]}>{label}</Text>
+        <TextInput
+          style={[inputStyles.input, { color: focused ? '#007AFF' : colors.text }]}
+          value={value}
+          onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          secureTextEntry={!visible}
+          placeholderTextColor={colors.textSecondary}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+      <TouchableOpacity onPress={() => setVisible((v) => !v)} style={inputStyles.eyeBtn}>
+        <Ionicons
+          name={visible ? 'eye-outline' : 'eye-off-outline'}
+          size={18}
+          color={colors.textSecondary}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const inputStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 12,
+    marginBottom: 14,
+    gap: 10,
+  },
+  leftIcon: {
+    flexShrink: 0,
+    marginTop: 4,
+  },
+  middle: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  input: {
+    fontSize: 16,
+    padding: 0,
+  },
+  eyeBtn: {
+    flexShrink: 0,
+    padding: 2,
+    marginTop: 4,
+  },
+});
 
 export function ChangePasswordScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -14,7 +109,6 @@ export function ChangePasswordScreen({ navigation }: any) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   const handleChange = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -29,55 +123,67 @@ export function ChangePasswordScreen({ navigation }: any) {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      setSuccess(true);
-      setTimeout(() => navigation.goBack(), 1500);
+      navigation.goBack();
     }, 1000);
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Change Password</Text>
-        <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.content}>
-        {success ? (
-          <View style={styles.successBox}>
-            <Ionicons name="checkmark-circle" size={64} color="#34C759" />
-            <Text style={[styles.successTitle, { color: colors.text }]}>Password Changed!</Text>
-          </View>
-        ) : (
-          <>
-            <Input label="Old Password" placeholder="Enter old password" value={oldPassword} onChangeText={setOldPassword} secureTextEntry />
-            <Input label="New Password" placeholder="Enter new password" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
-            <Input label="Confirm Password" placeholder="Confirm new password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            <View style={{ marginTop: 24 }}>
-              <Button title="Change Password" onPress={handleChange} loading={loading} />
-            </View>
-          </>
-        )}
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <SecureInput
+          label="Old Password"
+          value={oldPassword}
+          onChangeText={setOldPassword}
+          colors={colors}
+        />
+        <SecureInput
+          label="New Password"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          colors={colors}
+        />
+        <SecureInput
+          label="Confirm Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          colors={colors}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <Button title="Change Password" onPress={handleChange} loading={loading} />
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  root: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
+    gap: 8,
   },
-  headerTitle: { fontSize: 17, fontWeight: '600' },
-  content: { padding: 20 },
-  errorText: { color: '#FF3B30', textAlign: 'center', marginTop: 8 },
-  successBox: { alignItems: 'center', paddingVertical: 60 },
-  successTitle: { fontSize: 20, fontWeight: '600', marginTop: 16 },
+  backBtn: { width: 32, justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '600' },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  errorText: { color: '#FF3B30', marginTop: 4, fontSize: 13 },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
 });

@@ -14,10 +14,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Flag } from 'react-native-country-picker-modal';
 import { useTheme } from '../../contexts/ThemeContext';
-import { LANGUAGES, type Language } from '../../constants/languages';
+import { LANGUAGES, getLanguageByCode, type Language } from '../../constants/languages';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MODAL_HEIGHT = SCREEN_HEIGHT * 0.75;
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.78;
 
 interface LanguagePickerModalProps {
   visible: boolean;
@@ -39,6 +39,8 @@ export function LanguagePickerModal({
   const slideAnim = useRef(new Animated.Value(MODAL_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
+  const selectedLang = selectedCode ? getLanguageByCode(selectedCode) : undefined;
+
   const filteredLanguages = LANGUAGES.filter(
     (lang) =>
       lang.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -49,29 +51,13 @@ export function LanguagePickerModal({
     if (visible) {
       setSearch('');
       Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdropAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: MODAL_HEIGHT,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdropAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
+        Animated.timing(slideAnim, { toValue: MODAL_HEIGHT, duration: 250, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
       ]).start();
     }
   }, [visible]);
@@ -88,15 +74,8 @@ export function LanguagePickerModal({
       activeOpacity={0.7}
     >
       <Flag countryCode={item.countryCode as any} flagSize={28} withEmoji />
-      <View style={styles.langInfo}>
-        <Text style={[styles.langName, { color: colors.text }]}>{item.name}</Text>
-        <Text style={[styles.langNative, { color: colors.textSecondary }]}>{item.nativeName}</Text>
-      </View>
-      {selectedCode === item.code && (
-        <View style={[styles.checkCircle, { backgroundColor: '#007AFF' }]}>
-          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-        </View>
-      )}
+      <Text style={[styles.langName, { color: colors.text }]}>{item.name}</Text>
+      <Ionicons name="arrow-forward" size={18} color={colors.textSecondary} />
     </TouchableOpacity>
   );
 
@@ -108,21 +87,39 @@ export function LanguagePickerModal({
 
       <Animated.View
         style={[
-          styles.modalContainer,
-          {
-            backgroundColor: colors.background,
-            transform: [{ translateY: slideAnim }],
-          },
+          styles.sheet,
+          { backgroundColor: colors.background, transform: [{ translateY: slideAnim }] },
         ]}
       >
         <View style={styles.handleBar}>
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
         </View>
 
-        <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+        {/* Title */}
+        <Text style={[styles.sheetTitle, { color: colors.textSecondary }]}>{title}</Text>
 
-        <View style={[styles.searchBox, { backgroundColor: colors.inputBackground }]}>
-          <Ionicons name="search" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
+        {/* Selected language / trigger row */}
+        <TouchableOpacity
+          style={[styles.triggerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={onClose}
+          activeOpacity={0.8}
+        >
+          {selectedLang ? (
+            <Flag countryCode={selectedLang.countryCode as any} flagSize={22} withEmoji />
+          ) : (
+            <View style={styles.sparkleBox}>
+              <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+            </View>
+          )}
+          <Text style={[styles.triggerText, { color: selectedLang ? colors.text : colors.textSecondary }]}>
+            {selectedLang ? selectedLang.name : 'Select Language'}
+          </Text>
+          <Ionicons name="chevron-up" size={16} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        {/* Search */}
+        <View style={[styles.searchBox, { borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search language"
@@ -156,7 +153,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  modalContainer: {
+  sheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -167,61 +164,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  handleBar: {
+  handleBar: { alignItems: 'center', paddingVertical: 12 },
+  handle: { width: 40, height: 4, borderRadius: 2 },
+
+  sheetTitle: { fontSize: 14, textAlign: 'center', marginBottom: 12 },
+
+  triggerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 12,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 12,
     marginBottom: 16,
-    textAlign: 'center',
   },
+  sparkleBox: {
+    width: 40,
+    height: 27,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  triggerText: { flex: 1, fontSize: 16, fontWeight: '500' },
+
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    marginBottom: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
+    marginBottom: 8,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    height: '100%',
-  },
-  listContent: {
-    paddingBottom: 40,
-  },
+  searchInput: { flex: 1, fontSize: 16, height: '100%' },
+
+  listContent: { paddingBottom: 40 },
   langItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 14,
   },
-  langInfo: {
-    flex: 1,
-  },
-  langName: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  langNative: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  langName: { flex: 1, fontSize: 16, fontWeight: '600' },
 });

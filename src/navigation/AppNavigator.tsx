@@ -18,7 +18,11 @@ export function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name={Routes.Home} component={HomeScreen} />
       <Stack.Screen name={Routes.Account} component={AccountScreen} />
-      <Stack.Screen name="VoiceVerification" component={VoiceVerificationScreen} />
+      <Stack.Screen
+        name="VoiceVerification"
+        component={VoiceVerificationScreen}
+        options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+      />
       <Stack.Screen name={Routes.Conversation} component={ConversationScreen} />
       <Stack.Screen name={Routes.PersonalInfo} component={PersonalInfoScreen} />
       <Stack.Screen name={Routes.History} component={HistoryScreen} />

@@ -296,6 +296,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#C7C7CC',
   },
   cancelBtnText: {
     fontSize: 16,
