@@ -5,6 +5,9 @@ import { HomeScreen } from '../screens/home/HomeScreen';
 import { VoiceVerificationScreen } from '../screens/home/VoiceVerificationScreen';
 import { AccountScreen } from '../screens/account/AccountScreen';
 import { ConversationScreen } from '../screens/conversation/ConversationScreen';
+import { WaitingScreen } from '../screens/conversation/WaitingScreen';
+import { JoinScreen } from '../screens/conversation/JoinScreen';
+import { FindPersonScreen } from '../screens/home/FindPersonScreen';
 import { PersonalInfoScreen } from '../screens/account/PersonalInfoScreen';
 import { HistoryScreen } from '../screens/account/HistoryScreen';
 import { ChangePasswordScreen } from '../screens/account/ChangePasswordScreen';
@@ -23,6 +26,9 @@ export function AppNavigator() {
         component={VoiceVerificationScreen}
         options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
       />
+      <Stack.Screen name={Routes.Waiting} component={WaitingScreen} />
+      <Stack.Screen name={Routes.Join} component={JoinScreen} />
+      <Stack.Screen name={Routes.FindPerson} component={FindPersonScreen} />
       <Stack.Screen name={Routes.Conversation} component={ConversationScreen} />
       <Stack.Screen name={Routes.PersonalInfo} component={PersonalInfoScreen} />
       <Stack.Screen name={Routes.History} component={HistoryScreen} />

@@ -20,6 +20,8 @@ export interface AppUser {
   displayName: string | null;
   photoURL: string | null;
   preferredLanguage: string;
+  phone?: string | null;
+  isDiscoverable?: boolean;
 }
 
 interface AuthContextValue {
@@ -56,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             displayName: fbUser.displayName,
             photoURL: fbUser.photoURL,
             preferredLanguage: 'en',
+            phone: null,
+            isDiscoverable: true,
           };
           await setDoc(doc(db, 'users', fbUser.uid), newUser);
           setUser(newUser);
@@ -85,6 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName,
       photoURL: null,
       preferredLanguage: 'en',
+      phone: null,
+      isDiscoverable: true,
     };
     await setDoc(doc(db, 'users', cred.user.uid), newUser);
     setUser(newUser);

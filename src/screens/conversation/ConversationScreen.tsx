@@ -8,8 +8,9 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Clipboard,
+  ActivityIndicator,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Flag } from 'react-native-country-picker-modal';
@@ -17,47 +18,54 @@ import * as Speech from 'expo-speech';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
-import { sendMessage, subscribeToMessages, type Message } from '../../services/firestore';
+import {
+  sendMessage,
+  subscribeToMessages,
+  subscribeToConversation,
+  type Message,
+  type Conversation,
+} from '../../services/firestore';
 import { translateText } from '../../services/translation';
 
 export function ConversationScreen({ route, navigation }: any) {
-  const { conversationId, myLanguage, otherLanguage } = route.params || {};
+  const { conversationId } = route.params || {};
   const { user } = useAuth();
   const { colors } = useTheme();
+  const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-
   const insets = useSafeAreaInsets();
-  const myLang = getLanguageByCode(myLanguage || 'en');
-  const otherLang = getLanguageByCode(otherLanguage || 'ar');
+
+  // Derive languages from conversation document
+  const otherUid = conversation?.participants.find((p) => p !== user?.uid);
+  const myLanguage = (user?.uid && conversation?.participantLanguages[user.uid]) || 'en';
+  const otherLanguage = (otherUid && conversation?.participantLanguages[otherUid]) || 'en';
+  const myLang = getLanguageByCode(myLanguage);
+  const otherLang = getLanguageByCode(otherLanguage);
 
   useEffect(() => {
     if (!conversationId) return;
-    const unsubscribe = subscribeToMessages(conversationId, (msgs) => {
+    const unsubConvo = subscribeToConversation(conversationId, setConversation);
+    const unsubMsgs = subscribeToMessages(conversationId, (msgs) => {
       setMessages(msgs);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
     });
-    return unsubscribe;
+    return () => {
+      unsubConvo();
+      unsubMsgs();
+    };
   }, [conversationId]);
 
   const handleSend = async () => {
-    if (!inputText.trim() || !user || !conversationId) return;
     const text = inputText.trim();
+    if (!text || !user || !conversationId || conversation?.status !== 'active') return;
     setInputText('');
     setSending(true);
-
     try {
       const translated = await translateText(text, myLanguage, otherLanguage);
-      await sendMessage(
-        conversationId,
-        user.uid,
-        text,
-        translated,
-        myLanguage,
-        otherLanguage
-      );
+      await sendMessage(conversationId, user.uid, text, translated, myLanguage, otherLanguage);
     } catch (err) {
       console.error('Send failed:', err);
     } finally {
@@ -67,6 +75,14 @@ export function ConversationScreen({ route, navigation }: any) {
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.senderId === user?.uid;
+
+    // For sender: show what they typed on top, translation below
+    // For receiver: show the translation (in their language) on top, original below
+    const primaryText = isMe ? item.originalText : item.translatedText;
+    const secondaryText = isMe ? item.translatedText : item.originalText;
+    const speakText = isMe ? item.translatedText : item.originalText;
+    const speakLang = isMe ? item.targetLanguage : item.sourceLanguage;
+
     return (
       <View style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
         {!isMe && (
@@ -83,18 +99,36 @@ export function ConversationScreen({ route, navigation }: any) {
                 : [styles.bubbleLeft, { backgroundColor: colors.surface }],
             ]}
           >
-            <Text style={[styles.originalText, isMe ? { color: '#FFF' } : { color: colors.text }]}>
-              {item.originalText}
+            <Text style={[styles.primaryText, { color: isMe ? '#FFF' : colors.text }]}>
+              {primaryText}
             </Text>
-            <Text style={[styles.translatedText, isMe ? { color: 'rgba(255,255,255,0.8)' } : { color: colors.textSecondary }]}>
-              {item.translatedText}
-            </Text>
+            {secondaryText !== primaryText && (
+              <Text
+                style={[
+                  styles.secondaryText,
+                  { color: isMe ? 'rgba(255,255,255,0.7)' : colors.textSecondary },
+                ]}
+              >
+                {secondaryText}
+              </Text>
+            )}
           </View>
-          <View style={[styles.messageActions, isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
-            <TouchableOpacity onPress={() => Speech.speak(item.translatedText, { language: item.targetLanguage })}>
+          <View
+            style={[
+              styles.messageActions,
+              isMe ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => Speech.speak(speakText, { language: speakLang })}
+            >
               <Ionicons name="play" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => Clipboard.setString(item.translatedText)}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => Clipboard.setString(speakText)}
+            >
               <Ionicons name="copy" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -108,10 +142,49 @@ export function ConversationScreen({ route, navigation }: any) {
     );
   };
 
+  // Loading state while conversation doc hasn't arrived yet
+  if (!conversation) {
+    return (
+      <View style={[styles.centerState, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  // Waiting state — shouldn't normally be reached (WaitingScreen handles this),
+  // but shown as a fallback if the second person hasn't joined yet
+  if (conversation.status === 'waiting') {
+    return (
+      <View style={[styles.centerState, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+        <TouchableOpacity style={styles.backBtnAbs} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Ionicons name="time-outline" size={48} color={colors.textSecondary} />
+        <Text style={[styles.waitingTitle, { color: colors.text }]}>Waiting for other person</Text>
+        <Text style={[styles.waitingCode, { color: colors.textSecondary }]}>
+          Invite code:{' '}
+          <Text style={{ fontWeight: '800', color: colors.text, letterSpacing: 4 }}>
+            {conversation.inviteCode}
+          </Text>
+        </Text>
+        <ActivityIndicator size="small" color="#007AFF" style={{ marginTop: 8 }} />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+    >
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.topBar, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
+        {/* Header */}
+        <View
+          style={[
+            styles.topBar,
+            { paddingTop: insets.top + 8, borderBottomColor: colors.border },
+          ]}
+        >
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -129,6 +202,7 @@ export function ConversationScreen({ route, navigation }: any) {
           <View style={{ width: 32 }} />
         </View>
 
+        {/* Messages */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -137,22 +211,30 @@ export function ConversationScreen({ route, navigation }: any) {
           contentContainerStyle={styles.messagesList}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
-                Start the conversation!
+              <Ionicons name="chatbubbles-outline" size={40} color={colors.textSecondary} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                Say hello! Your messages are translated automatically.
               </Text>
             </View>
           }
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
-        <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
-          <TouchableOpacity>
-            <Ionicons name="happy-outline" size={26} color={colors.textSecondary} />
-          </TouchableOpacity>
+        {/* Input bar */}
+        <View
+          style={[
+            styles.inputBar,
+            {
+              backgroundColor: colors.card,
+              borderTopColor: colors.border,
+              paddingBottom: insets.bottom + 10,
+            },
+          ]}
+        >
           <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground }]}>
             <TextInput
               style={[styles.input, { color: colors.text }]}
-              placeholder="Type a message..."
+              placeholder={`Type in ${myLang?.name || 'your language'}...`}
               placeholderTextColor={colors.textSecondary}
               value={inputText}
               onChangeText={setInputText}
@@ -161,8 +243,21 @@ export function ConversationScreen({ route, navigation }: any) {
             />
           </View>
           <TouchableOpacity onPress={handleSend} disabled={sending || !inputText.trim()}>
-            <View style={[styles.sendBtn, { backgroundColor: inputText.trim() && !sending ? '#007AFF' : colors.surface }]}>
-              <Ionicons name="send" size={16} color={inputText.trim() && !sending ? '#FFF' : colors.textSecondary} />
+            <View
+              style={[
+                styles.sendBtn,
+                { backgroundColor: inputText.trim() && !sending ? '#007AFF' : colors.surface },
+              ]}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={16}
+                  color={inputText.trim() ? '#FFF' : colors.textSecondary}
+                />
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -172,9 +267,22 @@ export function ConversationScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  centerState: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    padding: 32,
   },
+  backBtnAbs: {
+    position: 'absolute',
+    top: 56,
+    left: 16,
+    padding: 8,
+  },
+  waitingTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  waitingCode: { fontSize: 15, textAlign: 'center' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -196,32 +304,25 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
-  langChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  messagesList: {
-    padding: 16,
-    flexGrow: 1,
-  },
+  langChipText: { fontSize: 13, fontWeight: '500' },
+  messagesList: { padding: 16, flexGrow: 1 },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 100,
+    gap: 12,
+    paddingHorizontal: 32,
   },
+  emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
     marginBottom: 12,
   },
-  rowLeft: {
-    justifyContent: 'flex-start',
-  },
-  rowRight: {
-    justifyContent: 'flex-end',
-  },
+  rowLeft: { justifyContent: 'flex-start' },
+  rowRight: { justifyContent: 'flex-end' },
   avatarSmall: {
     width: 32,
     height: 32,
@@ -229,28 +330,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  messageContent: {
-    maxWidth: '75%',
-  },
+  messageContent: { maxWidth: '75%' },
   bubble: {
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  bubbleLeft: {
-    borderBottomLeftRadius: 4,
-  },
-  bubbleRight: {
-    borderBottomRightRadius: 4,
-  },
-  originalText: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  translatedText: {
-    fontSize: 13,
-    lineHeight: 18,
+  bubbleLeft: { borderBottomLeftRadius: 4 },
+  bubbleRight: { borderBottomRightRadius: 4 },
+  primaryText: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
+  secondaryText: {
+    fontSize: 12,
+    lineHeight: 17,
     marginTop: 4,
     fontStyle: 'italic',
   },
@@ -260,6 +351,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: 4,
   },
+  actionBtn: { padding: 2 },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,14 +367,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     maxHeight: 100,
   },
-  input: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
+  input: { fontSize: 16, lineHeight: 20 },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -13,6 +13,9 @@ export const Routes = {
 
   // App Screens
   Conversation: 'Conversation',
+  Waiting: 'Waiting',
+  Join: 'Join',
+  FindPerson: 'FindPerson',
   PersonalInfo: 'PersonalInfo',
   History: 'History',
   ChangePassword: 'ChangePassword',

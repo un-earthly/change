@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  Switch,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,6 +76,8 @@ export function PersonalInfoScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [firstName, setFirstName] = useState(user?.displayName?.split(' ')[0] || '');
   const [lastName, setLastName] = useState(user?.displayName?.split(' ').slice(1).join(' ') || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [isDiscoverable, setIsDiscoverable] = useState(user?.isDiscoverable ?? true);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -92,7 +95,11 @@ export function PersonalInfoScreen({ navigation }: any) {
 
   const handleSave = async () => {
     setLoading(true);
-    await updateUserProfile({ displayName: `${firstName} ${lastName}`.trim() });
+    await updateUserProfile({
+      displayName: `${firstName} ${lastName}`.trim(),
+      phone: phone.trim() || null,
+      isDiscoverable,
+    });
     setLoading(false);
     navigation.goBack();
   };
@@ -143,6 +150,28 @@ export function PersonalInfoScreen({ navigation }: any) {
             value={lastName}
             onChangeText={setLastName}
             colors={colors}
+          />
+          <FloatingInput
+            label="Phone Number (optional, for discovery)"
+            value={phone}
+            onChangeText={setPhone}
+            colors={colors}
+          />
+        </View>
+
+        {/* Discovery toggle */}
+        <View style={[styles.discoverRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.discoverText}>
+            <Text style={[styles.discoverTitle, { color: colors.text }]}>Make me discoverable</Text>
+            <Text style={[styles.discoverSub, { color: colors.textSecondary }]}>
+              Allow others to find your profile by email or phone
+            </Text>
+          </View>
+          <Switch
+            value={isDiscoverable}
+            onValueChange={setIsDiscoverable}
+            trackColor={{ false: colors.border, true: '#007AFF' }}
+            thumbColor="#FFF"
           />
         </View>
       </ScrollView>
@@ -226,6 +255,18 @@ const styles = StyleSheet.create({
   fields: {
     gap: 0,
   },
+  discoverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 16,
+    gap: 12,
+    marginTop: 8,
+  },
+  discoverText: { flex: 1, gap: 2 },
+  discoverTitle: { fontSize: 15, fontWeight: '600' },
+  discoverSub: { fontSize: 12, lineHeight: 17 },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,

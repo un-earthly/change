@@ -14,14 +14,11 @@ export function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const [myLanguage, setMyLanguage] = useState(user?.preferredLanguage || '');
-  const [otherLanguage, setOtherLanguage] = useState('');
   const [showMyLangPicker, setShowMyLangPicker] = useState(false);
-  const [showOtherLangPicker, setShowOtherLangPicker] = useState(false);
   const [starting, setStarting] = useState(false);
   const insets = useSafeAreaInsets();
 
   const myLang = getLanguageByCode(myLanguage);
-  const otherLang = getLanguageByCode(otherLanguage);
 
   const handleMyLanguageSelect = useCallback(
     (lang: Language) => {
@@ -31,44 +28,19 @@ export function HomeScreen({ navigation }: any) {
     [navigation]
   );
 
-  const handleOtherLanguageSelect = useCallback((lang: Language) => {
-    setOtherLanguage(lang.code);
-  }, []);
-
   const startConversation = async () => {
     if (!user) return;
     setStarting(true);
     try {
-      const src = myLanguage || 'en';
-      const tgt = otherLanguage || 'ar';
-      const conversationId = await createConversation(user.uid, src, tgt);
-      navigation.navigate(Routes.Conversation, { conversationId, myLanguage: src, otherLanguage: tgt });
+      const lang = myLanguage || 'en';
+      const { conversationId, inviteCode } = await createConversation(user.uid, lang);
+      navigation.navigate(Routes.Waiting, { conversationId, inviteCode, myLanguage: lang });
     } catch (err) {
       console.error('Failed to create conversation:', err);
     } finally {
       setStarting(false);
     }
   };
-
-  const renderPicker = (lang: Language | undefined, onPress: () => void) => (
-    <TouchableOpacity
-      style={[styles.pickerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      {lang ? (
-        <Flag countryCode={lang.countryCode as any} flagSize={22} withEmoji />
-      ) : (
-        <View style={styles.sparkleBox}>
-          <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-        </View>
-      )}
-      <Text style={[styles.pickerText, { color: lang ? colors.text : colors.textSecondary }]}>
-        {lang ? lang.name : 'Select Language'}
-      </Text>
-      <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
-    </TouchableOpacity>
-  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -87,23 +59,31 @@ export function HomeScreen({ navigation }: any) {
         <View style={styles.content}>
           {/* Language selection card */}
           <View style={[styles.card, { backgroundColor: colors.background }]}>
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Select Your language</Text>
-            {renderPicker(myLang, () => setShowMyLangPicker(true))}
+            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Your language</Text>
+            <TouchableOpacity
+              style={[styles.pickerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => setShowMyLangPicker(true)}
+              activeOpacity={0.8}
+            >
+              {myLang ? (
+                <Flag countryCode={myLang.countryCode as any} flagSize={22} withEmoji />
+              ) : (
+                <View style={styles.sparkleBox}>
+                  <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                </View>
+              )}
+              <Text style={[styles.pickerText, { color: myLang ? colors.text : colors.textSecondary }]}>
+                {myLang ? myLang.name : 'Select your language'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
 
-            {/* Swap divider */}
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <View style={[styles.swapCircle, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                <Ionicons name="swap-vertical" size={16} color={colors.textSecondary} />
-              </View>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            </View>
-
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Select Next Person's language</Text>
-            {renderPicker(otherLang, () => setShowOtherLangPicker(true))}
+            <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
+              The other person sets their language when they join
+            </Text>
           </View>
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 32 }} />
 
           {/* Start Conversation */}
           <TouchableOpacity
@@ -112,8 +92,28 @@ export function HomeScreen({ navigation }: any) {
             activeOpacity={0.85}
             disabled={starting}
           >
-            <Ionicons name="mic" size={20} color="#FFFFFF" />
-            <Text style={styles.startBtnText}>{starting ? 'Starting...' : 'Start Conversation'}</Text>
+            <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.startBtnText}>{starting ? 'Creating...' : 'New Conversation'}</Text>
+          </TouchableOpacity>
+
+          {/* Find a specific person */}
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.navigate(Routes.FindPerson)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="search-outline" size={20} color={colors.text} />
+            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Find Someone</Text>
+          </TouchableOpacity>
+
+          {/* Join existing conversation */}
+          <TouchableOpacity
+            style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={() => navigation.navigate(Routes.Join)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="enter-outline" size={20} color={colors.text} />
+            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Join with Invite Code</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -128,14 +128,7 @@ export function HomeScreen({ navigation }: any) {
         onClose={() => setShowMyLangPicker(false)}
         onSelect={handleMyLanguageSelect}
         selectedCode={myLanguage}
-        title="Select Your language"
-      />
-      <LanguagePickerModal
-        visible={showOtherLangPicker}
-        onClose={() => setShowOtherLangPicker(false)}
-        onSelect={handleOtherLanguageSelect}
-        selectedCode={otherLanguage}
-        title="Select Next Person's language"
+        title="Select your language"
       />
     </View>
   );
@@ -174,6 +167,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cardLabel: { fontSize: 13, fontWeight: '500', textAlign: 'center' },
+  cardHint: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
 
   pickerRow: {
     flexDirection: 'row',
@@ -194,22 +188,6 @@ const styles = StyleSheet.create({
   },
   pickerText: { flex: 1, fontSize: 16, fontWeight: '500' },
 
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 2,
-  },
-  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
-  swapCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 12,
-  },
-
   startBtn: {
     height: 56,
     borderRadius: 28,
@@ -226,6 +204,18 @@ const styles = StyleSheet.create({
   },
   startBtnDisabled: { opacity: 0.7 },
   startBtnText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+
+  secondaryBtn: {
+    height: 52,
+    borderRadius: 28,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  secondaryBtnText: { fontSize: 16, fontWeight: '600' },
 
   adBanner: {
     height: 56,
