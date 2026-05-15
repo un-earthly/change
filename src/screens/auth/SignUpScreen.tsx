@@ -54,6 +54,7 @@ export function SignUpScreen({ navigation }: any) {
         </View>
 
         <View style={styles.form}>
+          <Input label="Display Name" placeholder="Enter your name" value={displayName} onChangeText={setDisplayName} autoCapitalize="words" />
           <Input label="Email Address" placeholder="Enter your email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
           <Input label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} secureTextEntry />
           <Input label="Confirm Password" placeholder="Confirm your password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />

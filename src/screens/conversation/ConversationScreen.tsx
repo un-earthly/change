@@ -26,6 +26,7 @@ import {
   type Conversation,
 } from '../../services/firestore';
 import { translateText } from '../../services/translation';
+import { sendPushNotification } from '../../services/notifications';
 
 export function ConversationScreen({ route, navigation }: any) {
   const { conversationId } = route.params || {};
@@ -66,6 +67,9 @@ export function ConversationScreen({ route, navigation }: any) {
     try {
       const translated = await translateText(text, myLanguage, otherLanguage);
       await sendMessage(conversationId, user.uid, text, translated, myLanguage, otherLanguage);
+      if (otherUid) {
+        sendPushNotification(otherUid, user.displayName || 'Someone', text, conversationId);
+      }
     } catch (err) {
       console.error('Send failed:', err);
     } finally {
@@ -76,10 +80,8 @@ export function ConversationScreen({ route, navigation }: any) {
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.senderId === user?.uid;
 
-    // For sender: show what they typed on top, translation below
-    // For receiver: show the translation (in their language) on top, original below
-    const primaryText = isMe ? item.originalText : item.translatedText;
-    const secondaryText = isMe ? item.translatedText : item.originalText;
+    const primaryText = item.originalText;
+    const secondaryText = item.translatedText;
     const speakText = isMe ? item.translatedText : item.originalText;
     const speakLang = isMe ? item.targetLanguage : item.sourceLanguage;
 

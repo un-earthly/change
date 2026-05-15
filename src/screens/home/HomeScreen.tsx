@@ -11,24 +11,38 @@ import { Routes } from '../../constants/routes';
 import { createConversation } from '../../services/firestore';
 
 export function HomeScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { colors } = useTheme();
   const [myLanguage, setMyLanguage] = useState(user?.preferredLanguage || '');
+  const [theirLanguage, setTheirLanguage] = useState('');
   const [showMyLangPicker, setShowMyLangPicker] = useState(false);
+  const [showTheirLangPicker, setShowTheirLangPicker] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const [starting, setStarting] = useState(false);
   const insets = useSafeAreaInsets();
 
   const myLang = getLanguageByCode(myLanguage);
+  const theirLang = getLanguageByCode(theirLanguage);
 
   const handleMyLanguageSelect = useCallback(
     (lang: Language) => {
       setMyLanguage(lang.code);
+      updateUserProfile({ preferredLanguage: lang.code }).catch(() => {});
       navigation.navigate('VoiceVerification', { languageCode: lang.code, onVerified: () => {} });
     },
-    [navigation]
+    [navigation, updateUserProfile]
   );
 
-  const startConversation = async () => {
+  const handleTheirLanguageSelect = useCallback((lang: Language) => {
+    setTheirLanguage(lang.code);
+  }, []);
+
+  const swapLanguages = () => {
+    setMyLanguage(theirLanguage);
+    setTheirLanguage(myLanguage);
+  };
+
+  const startNewConversation = async () => {
     if (!user) return;
     setStarting(true);
     try {
@@ -59,62 +73,100 @@ export function HomeScreen({ navigation }: any) {
         <View style={styles.content}>
           {/* Language selection card */}
           <View style={[styles.card, { backgroundColor: colors.background }]}>
-            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Your language</Text>
+            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Select Your language</Text>
             <TouchableOpacity
               style={[styles.pickerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => setShowMyLangPicker(true)}
               activeOpacity={0.8}
             >
               {myLang ? (
-                <Flag countryCode={myLang.countryCode as any} flagSize={22} withEmoji />
+                <Flag countryCode={myLang.countryCode as any} flagSize={20} withEmoji />
               ) : (
                 <View style={styles.sparkleBox}>
-                  <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                  <Ionicons name="sparkles" size={14} color="#FFFFFF" />
                 </View>
               )}
               <Text style={[styles.pickerText, { color: myLang ? colors.text : colors.textSecondary }]}>
-                {myLang ? myLang.name : 'Select your language'}
+                {myLang ? myLang.name : 'Select Language'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={15} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <Text style={[styles.cardHint, { color: colors.textSecondary }]}>
-              The other person sets their language when they join
-            </Text>
+            {/* Swap button */}
+            <TouchableOpacity
+              style={[styles.swapBtn, { borderColor: colors.border }]}
+              onPress={swapLanguages}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="swap-vertical" size={15} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <Text style={[styles.cardLabel, { color: colors.textSecondary }]}>Select Next Person's language</Text>
+            <TouchableOpacity
+              style={[styles.pickerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => setShowTheirLangPicker(true)}
+              activeOpacity={0.8}
+            >
+              {theirLang ? (
+                <Flag countryCode={theirLang.countryCode as any} flagSize={20} withEmoji />
+              ) : (
+                <View style={styles.sparkleBox}>
+                  <Ionicons name="sparkles" size={14} color="#FFFFFF" />
+                </View>
+              )}
+              <Text style={[styles.pickerText, { color: theirLang ? colors.text : colors.textSecondary }]}>
+                {theirLang ? theirLang.name : 'Select Language'}
+              </Text>
+              <Ionicons name="chevron-down" size={15} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
-          <View style={{ height: 32 }} />
+          <View style={{ height: 28 }} />
 
-          {/* Start Conversation */}
-          <TouchableOpacity
-            style={[styles.startBtn, starting && styles.startBtnDisabled]}
-            onPress={startConversation}
-            activeOpacity={0.85}
-            disabled={starting}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.startBtnText}>{starting ? 'Creating...' : 'New Conversation'}</Text>
-          </TouchableOpacity>
+          {!showActions ? (
+            <TouchableOpacity
+              style={styles.startBtn}
+              onPress={() => setShowActions(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="mic-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.startBtnText}>Start Conversation</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.startBtn, starting && styles.startBtnDisabled]}
+                onPress={startNewConversation}
+                activeOpacity={0.85}
+                disabled={starting}
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.startBtnText}>{starting ? 'Creating...' : 'New Conversation'}</Text>
+              </TouchableOpacity>
 
-          {/* Find a specific person */}
-          <TouchableOpacity
-            style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => navigation.navigate(Routes.FindPerson)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="search-outline" size={20} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Find Someone</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate(Routes.FindPerson)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="search-outline" size={18} color={colors.text} />
+                <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Find Someone</Text>
+              </TouchableOpacity>
 
-          {/* Join existing conversation */}
-          <TouchableOpacity
-            style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => navigation.navigate(Routes.Join)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="enter-outline" size={20} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Join with Invite Code</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => navigation.navigate(Routes.Join)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="enter-outline" size={18} color={colors.text} />
+                <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Join with Invite Code</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setShowActions(false)} style={styles.cancelBtn}>
+                <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -129,6 +181,13 @@ export function HomeScreen({ navigation }: any) {
         onSelect={handleMyLanguageSelect}
         selectedCode={myLanguage}
         title="Select your language"
+      />
+      <LanguagePickerModal
+        visible={showTheirLangPicker}
+        onClose={() => setShowTheirLangPicker(false)}
+        onSelect={handleTheirLanguageSelect}
+        selectedCode={theirLanguage}
+        title="Select next person's language"
       />
     </View>
   );
@@ -154,68 +213,88 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  content: { padding: 20, paddingTop: 16 },
+  content: { paddingHorizontal: 20, paddingTop: 40 },
 
   card: {
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 18,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 3,
-    gap: 10,
+    gap: 8,
   },
-  cardLabel: { fontSize: 13, fontWeight: '500', textAlign: 'center' },
-  cardHint: { fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  cardLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
+
+  swapBtn: {
+    alignSelf: 'center',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   pickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    gap: 10,
   },
   sparkleBox: {
-    width: 40,
-    height: 27,
-    borderRadius: 8,
+    width: 36,
+    height: 24,
+    borderRadius: 7,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pickerText: { flex: 1, fontSize: 16, fontWeight: '500' },
+  pickerText: { flex: 1, fontSize: 15, fontWeight: '500' },
 
   startBtn: {
-    height: 56,
-    borderRadius: 28,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#007AFF',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    alignSelf: 'center',
+    width: '82%',
+    gap: 8,
     shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 5,
   },
   startBtnDisabled: { opacity: 0.7 },
-  startBtnText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  startBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 
   secondaryBtn: {
-    height: 52,
-    borderRadius: 28,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1.5,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    alignSelf: 'center',
+    width: '82%',
+    gap: 8,
     marginTop: 10,
   },
-  secondaryBtnText: { fontSize: 16, fontWeight: '600' },
+  secondaryBtnText: { fontSize: 15, fontWeight: '600' },
+
+  cancelBtn: {
+    alignItems: 'center',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  cancelText: { fontSize: 13, fontWeight: '500' },
 
   adBanner: {
     height: 56,

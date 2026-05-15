@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { registerForPushNotifications } from '../services/notifications';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -50,7 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (fbUser) {
         const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
         if (userDoc.exists()) {
-          setUser(userDoc.data() as AppUser);
+          const data = userDoc.data() as AppUser;
+          if (data.isDiscoverable === undefined) {
+            await updateDoc(doc(db, 'users', fbUser.uid), { isDiscoverable: true });
+            data.isDiscoverable = true;
+          }
+          setUser(data);
         } else {
           const newUser: AppUser = {
             uid: fbUser.uid,
@@ -64,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await setDoc(doc(db, 'users', fbUser.uid), newUser);
           setUser(newUser);
         }
+        registerForPushNotifications(fbUser.uid).catch(() => {});
       } else {
         setUser(null);
       }

@@ -14,19 +14,27 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getLanguageByCode } from '../../constants/languages';
+import { getLanguageByCode, type Language } from '../../constants/languages';
+import { LanguagePickerModal } from '../../components/common/LanguagePickerModal';
+import { Flag } from 'react-native-country-picker-modal';
 import { joinConversation } from '../../services/firestore';
 import { Routes } from '../../constants/routes';
 
 export function JoinScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [code, setCode] = useState('');
   const [joining, setJoining] = useState(false);
+  const [myLanguage, setMyLanguage] = useState(user?.preferredLanguage || 'en');
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
-  const myLanguage = user?.preferredLanguage || 'en';
   const myLang = getLanguageByCode(myLanguage);
+
+  const handleLanguageSelect = (lang: Language) => {
+    setMyLanguage(lang.code);
+    updateUserProfile({ preferredLanguage: lang.code }).catch(() => {});
+  };
 
   const handleJoin = async () => {
     if (!user || code.trim().length !== 6) return;
@@ -77,16 +85,24 @@ export function JoinScreen({ navigation }: any) {
             />
           </View>
 
-          <View style={[styles.langNote, { backgroundColor: colors.surface }]}>
-            <Ionicons name="language-outline" size={18} color={colors.textSecondary} />
+          <TouchableOpacity
+            style={[styles.langNote, { backgroundColor: colors.surface }]}
+            onPress={() => setShowLangPicker(true)}
+            activeOpacity={0.7}
+          >
+            {myLang ? (
+              <Flag countryCode={myLang.countryCode as any} flagSize={18} withEmoji />
+            ) : (
+              <Ionicons name="language-outline" size={18} color={colors.textSecondary} />
+            )}
             <Text style={[styles.langNoteText, { color: colors.textSecondary }]}>
-              You'll chat in{' '}
+              Your language:{' '}
               <Text style={{ fontWeight: '700', color: colors.text }}>
                 {myLang?.name || myLanguage.toUpperCase()}
               </Text>
-              {' '}(your profile language)
             </Text>
-          </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.joinBtn, !canJoin && styles.joinBtnDisabled]}
@@ -104,6 +120,14 @@ export function JoinScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </View>
+
+      <LanguagePickerModal
+        visible={showLangPicker}
+        onClose={() => setShowLangPicker(false)}
+        onSelect={handleLanguageSelect}
+        selectedCode={myLanguage}
+        title="Your language"
+      />
     </KeyboardAvoidingView>
   );
 }

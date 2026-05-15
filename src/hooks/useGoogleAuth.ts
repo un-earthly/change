@@ -32,4 +32,5 @@ export function useGoogleAuth() {
   };
 
   return { promptAsync, loading, error };
+  
 }
