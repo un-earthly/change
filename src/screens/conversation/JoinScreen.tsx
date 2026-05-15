@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode, type Language } from '../../constants/languages';
 import { LanguagePickerModal } from '../../components/common/LanguagePickerModal';
-import { Flag } from 'react-native-country-picker-modal';
+import { FlagEmoji } from '../../components/common/FlagEmoji';
 import { joinConversation } from '../../services/firestore';
 import { Routes } from '../../constants/routes';
 
@@ -91,7 +91,7 @@ export function JoinScreen({ navigation }: any) {
             activeOpacity={0.7}
           >
             {myLang ? (
-              <Flag countryCode={myLang.countryCode as any} flagSize={18} withEmoji />
+              <FlagEmoji countryCode={myLang.countryCode} size={18} />
             ) : (
               <Ionicons name="language-outline" size={18} color={colors.textSecondary} />
             )}

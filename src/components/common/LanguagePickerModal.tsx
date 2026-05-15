@@ -12,7 +12,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Flag } from 'react-native-country-picker-modal';
+import { FlagEmoji } from './FlagEmoji';
 import { useTheme } from '../../contexts/ThemeContext';
 import { LANGUAGES, getLanguageByCode, type Language } from '../../constants/languages';
 
@@ -73,7 +73,7 @@ export function LanguagePickerModal({
       onPress={() => handleSelect(item)}
       activeOpacity={0.7}
     >
-      <Flag countryCode={item.countryCode as any} flagSize={28} withEmoji />
+      <FlagEmoji countryCode={item.countryCode} size={28} />
       <Text style={[styles.langName, { color: colors.text }]}>{item.name}</Text>
       <Ionicons name="arrow-forward" size={18} color={colors.textSecondary} />
     </TouchableOpacity>
@@ -105,7 +105,7 @@ export function LanguagePickerModal({
           activeOpacity={0.8}
         >
           {selectedLang ? (
-            <Flag countryCode={selectedLang.countryCode as any} flagSize={22} withEmoji />
+            <FlagEmoji countryCode={selectedLang.countryCode} size={22} />
           ) : (
             <View style={styles.sparkleBox}>
               <Ionicons name="sparkles" size={16} color="#FFFFFF" />

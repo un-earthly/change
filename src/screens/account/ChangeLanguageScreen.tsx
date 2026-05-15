@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Flag } from 'react-native-country-picker-modal';
+import { FlagEmoji } from '../../components/common/FlagEmoji';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { LANGUAGES } from '../../constants/languages';
@@ -35,7 +35,7 @@ export function ChangeLanguageScreen({ navigation }: any) {
             style={[styles.item, { borderBottomColor: colors.border }]}
             onPress={() => selectLanguage(lang.code)}
           >
-            <Flag countryCode={lang.countryCode as any} flagSize={22} withEmoji />
+            <FlagEmoji countryCode={lang.countryCode} size={22} />
             <Text style={[styles.langName, { color: colors.text }]}>{lang.name}</Text>
             {currentLang === lang.code && (
               <Ionicons name="checkmark" size={20} color="#007AFF" />

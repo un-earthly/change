@@ -19,7 +19,11 @@ const Stack = createNativeStackNavigator();
 export function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name={Routes.Home} component={HomeScreen} />
+      <Stack.Screen
+        name={Routes.Home}
+        component={HomeScreen}
+        options={{ contentStyle: { backgroundColor: 'transparent' } }}
+      />
       <Stack.Screen name={Routes.Account} component={AccountScreen} />
       <Stack.Screen
         name="VoiceVerification"

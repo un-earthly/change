@@ -9,14 +9,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Flag } from 'react-native-country-picker-modal';
+import { FlagEmoji } from '../../components/common/FlagEmoji';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getLanguageByCode } from '../../constants/languages';
+import { getLanguageByCode, type Language } from '../../constants/languages';
+import { LanguagePickerModal } from '../../components/common/LanguagePickerModal';
 import {
   searchUserByEmail,
   searchUserByPhone,
@@ -38,6 +38,8 @@ export function FindPersonScreen({ navigation }: any) {
   const [starting, setStarting] = useState(false);
   const [searched, setSearched] = useState(false);
   const [foundUser, setFoundUser] = useState<PublicUserProfile | null>(null);
+  const [selectedOtherLanguage, setSelectedOtherLanguage] = useState('en');
+  const [showOtherLangPicker, setShowOtherLangPicker] = useState(false);
 
   const handleSearch = async () => {
     const q = query.trim();
@@ -49,6 +51,7 @@ export function FindPersonScreen({ navigation }: any) {
       const result =
         mode === 'email' ? await searchUserByEmail(q) : await searchUserByPhone(q);
       setFoundUser(result);
+      setSelectedOtherLanguage(result?.preferredLanguage || 'en');
       setSearched(true);
     } catch (err) {
       Alert.alert('Search failed', 'Something went wrong. Please try again.');
@@ -70,7 +73,7 @@ export function FindPersonScreen({ navigation }: any) {
         user.uid,
         myLanguage,
         foundUser.uid,
-        foundUser.preferredLanguage,
+        selectedOtherLanguage,
       );
       navigation.navigate(Routes.Conversation, { conversationId });
     } catch {
@@ -80,7 +83,7 @@ export function FindPersonScreen({ navigation }: any) {
     }
   };
 
-  const otherLang = getLanguageByCode(foundUser?.preferredLanguage || 'en');
+  const otherLang = getLanguageByCode(selectedOtherLanguage);
 
   return (
     <KeyboardAvoidingView
@@ -188,14 +191,17 @@ export function FindPersonScreen({ navigation }: any) {
                 <Text style={[styles.resultName, { color: colors.text }]}>
                   {foundUser.displayName || 'Unnamed User'}
                 </Text>
-                <View style={styles.resultLang}>
-                  {otherLang && (
-                    <Flag countryCode={otherLang.countryCode as any} flagSize={14} withEmoji />
-                  )}
+                <TouchableOpacity
+                  style={styles.resultLang}
+                  onPress={() => setShowOtherLangPicker(true)}
+                  activeOpacity={0.7}
+                >
+                  {otherLang && <FlagEmoji countryCode={otherLang.countryCode} size={14} />}
                   <Text style={[styles.resultLangText, { color: colors.textSecondary }]}>
-                    {otherLang?.name || foundUser.preferredLanguage}
+                    {otherLang?.name || selectedOtherLanguage}
                   </Text>
-                </View>
+                  <Ionicons name="chevron-down" size={12} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
               <TouchableOpacity
                 style={[styles.chatBtn, starting && { opacity: 0.6 }]}
@@ -215,6 +221,13 @@ export function FindPersonScreen({ navigation }: any) {
           )}
         </View>
       </View>
+      <LanguagePickerModal
+        visible={showOtherLangPicker}
+        onClose={() => setShowOtherLangPicker(false)}
+        onSelect={(lang: Language) => setSelectedOtherLanguage(lang.code)}
+        selectedCode={selectedOtherLanguage}
+        title="Their language"
+      />
     </KeyboardAvoidingView>
   );
 }

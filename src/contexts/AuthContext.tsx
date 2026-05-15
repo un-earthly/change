@@ -21,6 +21,7 @@ export interface AppUser {
   displayName: string | null;
   photoURL: string | null;
   preferredLanguage: string;
+  lastTheirLanguage?: string;
   phone?: string | null;
   isDiscoverable?: boolean;
 }

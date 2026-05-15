@@ -8,8 +8,13 @@ export async function translateText(
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
     const res = await fetch(url);
     const json = await res.json();
-    if (json.responseStatus === 200 && json.responseData?.translatedText) {
-      return json.responseData.translatedText;
+    if (json.responseStatus === 200) {
+      const primary = json.responseData?.translatedText;
+      if (primary) return primary;
+      const fallback = (json.matches as any[])?.find(
+        (m) => m.translation && m.translation.trim(),
+      );
+      if (fallback) return fallback.translation.trim();
     }
     return text;
   } catch {

@@ -18,6 +18,7 @@ export interface Conversation {
   id: string;
   participants: string[];
   participantLanguages: Record<string, string>;
+  expectedOtherLanguage?: string | null;
   inviteCode: string | null;
   status: 'waiting' | 'active';
   createdBy: string;
@@ -107,7 +108,13 @@ export async function createDirectConversation(
   otherLanguage: string,
 ): Promise<string> {
   const existing = await findExistingConversation(myUid, otherUid);
-  if (existing) return existing;
+  if (existing) {
+    await updateDoc(doc(db, 'conversations', existing), {
+      participantLanguages: { [myUid]: myLanguage, [otherUid]: otherLanguage },
+      updatedAt: serverTimestamp(),
+    });
+    return existing;
+  }
 
   const convoRef = await addDoc(collection(db, 'conversations'), {
     participants: [myUid, otherUid],
@@ -134,11 +141,13 @@ function generateInviteCode(): string {
 export async function createConversation(
   userId: string,
   myLanguage: string,
+  expectedOtherLanguage?: string,
 ): Promise<{ conversationId: string; inviteCode: string }> {
   const inviteCode = generateInviteCode();
   const convoRef = await addDoc(collection(db, 'conversations'), {
     participants: [userId],
     participantLanguages: { [userId]: myLanguage },
+    expectedOtherLanguage: expectedOtherLanguage || null,
     inviteCode,
     status: 'waiting',
     createdBy: userId,
@@ -193,6 +202,7 @@ export function subscribeToConversation(
       id: docSnap.id,
       participants: data.participants,
       participantLanguages: data.participantLanguages,
+      expectedOtherLanguage: data.expectedOtherLanguage,
       inviteCode: data.inviteCode,
       status: data.status,
       createdBy: data.createdBy,

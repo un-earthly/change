@@ -13,7 +13,7 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Flag } from 'react-native-country-picker-modal';
+import { FlagEmoji } from '../../components/common/FlagEmoji';
 import * as Speech from 'expo-speech';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -27,6 +27,7 @@ import {
 } from '../../services/firestore';
 import { translateText } from '../../services/translation';
 import { sendPushNotification } from '../../services/notifications';
+import { Routes } from '../../constants/routes';
 
 export function ConversationScreen({ route, navigation }: any) {
   const { conversationId } = route.params || {};
@@ -42,7 +43,7 @@ export function ConversationScreen({ route, navigation }: any) {
   // Derive languages from conversation document
   const otherUid = conversation?.participants.find((p) => p !== user?.uid);
   const myLanguage = (user?.uid && conversation?.participantLanguages[user.uid]) || 'en';
-  const otherLanguage = (otherUid && conversation?.participantLanguages[otherUid]) || 'en';
+  const otherLanguage = (otherUid && conversation?.participantLanguages[otherUid]) || conversation?.expectedOtherLanguage || 'en';
   const myLang = getLanguageByCode(myLanguage);
   const otherLang = getLanguageByCode(otherLanguage);
 
@@ -80,16 +81,22 @@ export function ConversationScreen({ route, navigation }: any) {
   const renderMessage = ({ item }: { item: Message }) => {
     const isMe = item.senderId === user?.uid;
 
-    const primaryText = item.originalText;
-    const secondaryText = item.translatedText;
+    // Receiver sees their own language first (translated), sender's original below.
+    // Sender sees their own text first, translation below.
+    const primaryText = isMe ? item.originalText : item.translatedText;
+    const secondaryText = isMe ? item.translatedText : item.originalText;
     const speakText = isMe ? item.translatedText : item.originalText;
     const speakLang = isMe ? item.targetLanguage : item.sourceLanguage;
+
+    const avatarCountryCode = isMe
+      ? (myLang?.countryCode ?? 'US')
+      : (otherLang?.countryCode ?? 'US');
 
     return (
       <View style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
         {!isMe && (
           <View style={[styles.avatarSmall, { backgroundColor: colors.surface }]}>
-            <Ionicons name="person" size={16} color={colors.textSecondary} />
+            <FlagEmoji countryCode={avatarCountryCode} size={18} />
           </View>
         )}
         <View style={styles.messageContent}>
@@ -136,8 +143,8 @@ export function ConversationScreen({ route, navigation }: any) {
           </View>
         </View>
         {isMe && (
-          <View style={[styles.avatarSmall, { backgroundColor: '#34C759' }]}>
-            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+          <View style={[styles.avatarSmall, { backgroundColor: colors.surface }]}>
+            <FlagEmoji countryCode={avatarCountryCode} size={18} />
           </View>
         )}
       </View>
@@ -192,16 +199,20 @@ export function ConversationScreen({ route, navigation }: any) {
           </TouchableOpacity>
           <View style={styles.langIndicators}>
             <View style={[styles.langChip, { backgroundColor: colors.surface }]}>
-              <Flag countryCode={myLang?.countryCode as any} flagSize={14} withEmoji />
+              <FlagEmoji countryCode={myLang?.countryCode ?? 'US'} size={14} />
               <Text style={[styles.langChipText, { color: colors.text }]}>{myLang?.name}</Text>
             </View>
-            <Ionicons name="swap-horizontal" size={18} color={colors.textSecondary} />
             <View style={[styles.langChip, { backgroundColor: colors.surface }]}>
-              <Flag countryCode={otherLang?.countryCode as any} flagSize={14} withEmoji />
+              <FlagEmoji countryCode={otherLang?.countryCode ?? 'US'} size={14} />
               <Text style={[styles.langChipText, { color: colors.text }]}>{otherLang?.name}</Text>
             </View>
           </View>
-          <View style={{ width: 32 }} />
+          <TouchableOpacity
+            style={[styles.profileBtn, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate(Routes.Account)}
+          >
+            <Ionicons name="person" size={18} color={colors.text} />
+          </TouchableOpacity>
         </View>
 
         {/* Messages */}
@@ -307,6 +318,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   langChipText: { fontSize: 13, fontWeight: '500' },
+  profileBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   messagesList: { padding: 16, flexGrow: 1 },
   emptyState: {
     flex: 1,
@@ -342,9 +360,9 @@ const styles = StyleSheet.create({
   bubbleRight: { borderBottomRightRadius: 4 },
   primaryText: { fontSize: 15, lineHeight: 20, fontWeight: '500' },
   secondaryText: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
     fontStyle: 'italic',
   },
   messageActions: {

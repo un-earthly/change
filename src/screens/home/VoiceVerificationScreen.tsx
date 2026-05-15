@@ -18,7 +18,7 @@ import {
 } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Flag } from 'react-native-country-picker-modal';
+import { FlagEmoji } from '../../components/common/FlagEmoji';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
 import { getTestPhrase } from '../../constants/phrases';
@@ -132,7 +132,7 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
           activeOpacity={0.8}
         >
           {lang ? (
-            <Flag countryCode={lang.countryCode as any} flagSize={22} withEmoji />
+            <FlagEmoji countryCode={lang.countryCode} size={22} />
           ) : (
             <View style={styles.sparkleBox}>
               <Ionicons name="sparkles" size={16} color="#FFFFFF" />
@@ -148,7 +148,7 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
           {/* Large flag */}
           {lang && (
             <View style={styles.bigFlagWrap}>
-              <Flag countryCode={lang.countryCode as any} flagSize={48} withEmoji />
+              <FlagEmoji countryCode={lang.countryCode} size={48} />
             </View>
           )}
 
