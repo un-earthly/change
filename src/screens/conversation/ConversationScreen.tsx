@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Flag } from 'react-native-country-picker-modal';
-import * as Speech from 'expo-speech';
+import Tts from 'react-native-tts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
@@ -123,7 +123,7 @@ export function ConversationScreen({ route, navigation }: any) {
           >
             <TouchableOpacity
               style={styles.actionBtn}
-              onPress={() => Speech.speak(speakText, { language: speakLang })}
+              onPress={() => { Tts.setDefaultLanguage(speakLang); Tts.speak(speakText); }}
             >
               <Ionicons name="play" size={14} color={colors.textSecondary} />
             </TouchableOpacity>

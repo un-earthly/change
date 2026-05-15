@@ -9,9 +9,9 @@ import {
   TextInput,
   Switch,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../../components/common/Button';
@@ -81,16 +81,12 @@ export function PersonalInfoScreen({ navigation }: any) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const pickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+  const pickPhoto = () => {
+    launchImageLibrary({ mediaType: 'photo', includeBase64: false, quality: 0.8 }, (response) => {
+      if (!response.didCancel && response.assets?.[0]?.uri) {
+        setPhotoUri(response.assets[0].uri);
+      }
     });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-    }
   };
 
   const handleSave = async () => {

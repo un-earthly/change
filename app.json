@@ -1,37 +1,4 @@
 {
-  "expo": {
-    "name": "unbounded",
-    "slug": "unbounded",
-    "version": "1.0.0",
-    "orientation": "default",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "scheme": "unbounded",
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.unbounded"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.unbounded"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-asset",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#ffffff",
-          "image": "./assets/splash-icon.png"
-        }
-      ],
-      "expo-web-browser"
-    ]
-  }
+  "name": "unbounded",
+  "displayName": "unbounded"
 }

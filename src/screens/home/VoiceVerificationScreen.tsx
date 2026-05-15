@@ -8,16 +8,12 @@ import {
   Alert,
   Dimensions,
   ScrollView,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
-import {
-  useAudioRecorder,
-  useAudioRecorderState,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  RecordingPresets,
-} from 'expo-audio';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Flag } from 'react-native-country-picker-modal';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
@@ -26,6 +22,8 @@ import { getTestPhrase } from '../../constants/phrases';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.78;
 
+const audioRecorderPlayer = new AudioRecorderPlayer();
+
 export function VoiceVerificationScreen({ route, navigation }: any) {
   const { languageCode, onVerified } = route.params || {};
   const { colors } = useTheme();
@@ -33,9 +31,7 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   const lang = getLanguageByCode(languageCode);
   const phrase = getTestPhrase(languageCode);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recordState = useAudioRecorderState(recorder, 100);
-
+  const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
@@ -49,7 +45,7 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
   }, []);
 
   useEffect(() => {
-    if (recordState.isRecording) {
+    if (isRecording) {
       startGlowAnimation();
       startWaveAnimation();
     } else {
@@ -57,14 +53,25 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
       glowAnim.setValue(1);
       waveAnims.forEach((a) => { a.stopAnimation(); a.setValue(4); });
     }
-  }, [recordState.isRecording]);
+  }, [isRecording]);
 
   const setupAudio = async () => {
     try {
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      const { granted } = await requestRecordingPermissionsAsync();
-      setPermissionGranted(granted);
-      if (!granted) Alert.alert('Permission needed', 'Please allow microphone access to record.');
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message: 'This app needs access to your microphone to record audio.',
+            buttonPositive: 'OK',
+          }
+        );
+        const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
+        setPermissionGranted(isGranted);
+        if (!isGranted) Alert.alert('Permission needed', 'Please allow microphone access to record.');
+      } else {
+        setPermissionGranted(true);
+      }
     } catch (err) {
       console.error('Audio setup failed:', err);
     }
@@ -95,13 +102,14 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
       Alert.alert('Permission needed', 'Please allow microphone access in settings.');
       return;
     }
-    if (recordState.isRecording) {
-      recorder.stop();
+    if (isRecording) {
+      await audioRecorderPlayer.stopRecorder();
+      setIsRecording(false);
       setHasRecorded(true);
     } else {
       try {
-        await recorder.prepareToRecordAsync();
-        recorder.record();
+        await audioRecorderPlayer.startRecorder();
+        setIsRecording(true);
       } catch (err) {
         console.error('Failed to start recording:', err);
       }
@@ -112,8 +120,6 @@ export function VoiceVerificationScreen({ route, navigation }: any) {
     if (onVerified) onVerified();
     navigation.goBack();
   };
-
-  const isRecording = recordState.isRecording;
 
   return (
     <View style={styles.overlay}>

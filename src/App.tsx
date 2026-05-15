@@ -1,15 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'react-native';
-import * as SplashScreen from 'expo-splash-screen';
+import BootSplash from 'react-native-bootsplash';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SplashScreen as CustomSplash } from './screens/auth/SplashScreen';
 import { AuthNavigator } from './navigation/AuthNavigator';
 import { AppNavigator } from './navigation/AppNavigator';
-
-SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -18,7 +16,7 @@ function RootNavigator() {
 
   const handleSplashReady = useCallback(() => {
     setShowSplash(false);
-    SplashScreen.hideAsync();
+    BootSplash.hide({ fade: true });
   }, []);
 
   if (showSplash || isLoading) {
