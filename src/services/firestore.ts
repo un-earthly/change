@@ -192,25 +192,29 @@ export function subscribeToConversation(
   conversationId: string,
   callback: (conversation: Conversation | null) => void,
 ) {
-  return onSnapshot(doc(db, 'conversations', conversationId), (docSnap) => {
-    if (!docSnap.exists()) {
-      callback(null);
-      return;
-    }
-    const data = docSnap.data();
-    callback({
-      id: docSnap.id,
-      participants: data.participants,
-      participantLanguages: data.participantLanguages,
-      expectedOtherLanguage: data.expectedOtherLanguage,
-      inviteCode: data.inviteCode,
-      status: data.status,
-      createdBy: data.createdBy,
-      createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
-      lastMessage: data.lastMessage,
-    });
-  });
+  return onSnapshot(
+    doc(db, 'conversations', conversationId),
+    (docSnap) => {
+      if (!docSnap.exists()) {
+        callback(null);
+        return;
+      }
+      const data = docSnap.data();
+      callback({
+        id: docSnap.id,
+        participants: data.participants,
+        participantLanguages: data.participantLanguages,
+        expectedOtherLanguage: data.expectedOtherLanguage,
+        inviteCode: data.inviteCode,
+        status: data.status,
+        createdBy: data.createdBy,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        lastMessage: data.lastMessage,
+      });
+    },
+    (err) => console.error('subscribeToConversation:', err.message),
+  );
 }
 
 export async function sendMessage(
@@ -251,24 +255,28 @@ export function subscribeToMessages(
     orderBy('createdAt', 'asc'),
   );
 
-  return onSnapshot(q, (snapshot: QuerySnapshot) => {
-    const msgs: Message[] = snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        conversationId: data.conversationId,
-        senderId: data.senderId,
-        originalText: data.originalText,
-        translatedText: data.translatedText,
-        sourceLanguage: data.sourceLanguage,
-        targetLanguage: data.targetLanguage,
-        type: data.type,
-        audioURL: data.audioURL,
-        createdAt: data.createdAt,
-      };
-    });
-    callback(msgs);
-  });
+  return onSnapshot(
+    q,
+    (snapshot: QuerySnapshot) => {
+      const msgs: Message[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          conversationId: data.conversationId,
+          senderId: data.senderId,
+          originalText: data.originalText,
+          translatedText: data.translatedText,
+          sourceLanguage: data.sourceLanguage,
+          targetLanguage: data.targetLanguage,
+          type: data.type,
+          audioURL: data.audioURL,
+          createdAt: data.createdAt,
+        };
+      });
+      callback(msgs);
+    },
+    (err) => console.error('subscribeToMessages:', err.message),
+  );
 }
 
 export function subscribeToConversations(
@@ -281,23 +289,27 @@ export function subscribeToConversations(
     orderBy('updatedAt', 'desc'),
   );
 
-  return onSnapshot(q, (snapshot: QuerySnapshot) => {
-    const convos: Conversation[] = snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        participants: data.participants,
-        participantLanguages: data.participantLanguages,
-        inviteCode: data.inviteCode,
-        status: data.status,
-        createdBy: data.createdBy,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-        lastMessage: data.lastMessage,
-      };
-    });
-    callback(convos);
-  });
+  return onSnapshot(
+    q,
+    (snapshot: QuerySnapshot) => {
+      const convos: Conversation[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          participants: data.participants,
+          participantLanguages: data.participantLanguages,
+          inviteCode: data.inviteCode,
+          status: data.status,
+          createdBy: data.createdBy,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          lastMessage: data.lastMessage,
+        };
+      });
+      callback(convos);
+    },
+    (err) => console.error('subscribeToConversations:', err.message),
+  );
 }
 
 export async function getUserMessages(userId: string): Promise<Message[]> {

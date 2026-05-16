@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -26,6 +27,7 @@ import {
   type Conversation,
 } from '../../services/firestore';
 import { translateText } from '../../services/translation';
+import { checkSpelling, applyCorrection, type SpellMatch } from '../../services/spellcheck';
 import { sendPushNotification } from '../../services/notifications';
 import { Routes } from '../../constants/routes';
 
@@ -37,7 +39,12 @@ export function ConversationScreen({ route, navigation }: any) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [translationPreview, setTranslationPreview] = useState('');
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [spellMatches, setSpellMatches] = useState<SpellMatch[]>([]);
   const flatListRef = useRef<FlatList>(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const spellTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const insets = useSafeAreaInsets();
 
   // Derive languages from conversation document
@@ -48,7 +55,7 @@ export function ConversationScreen({ route, navigation }: any) {
   const otherLang = getLanguageByCode(otherLanguage);
 
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || !user) return;
     const unsubConvo = subscribeToConversation(conversationId, setConversation);
     const unsubMsgs = subscribeToMessages(conversationId, (msgs) => {
       setMessages(msgs);
@@ -58,12 +65,56 @@ export function ConversationScreen({ route, navigation }: any) {
       unsubConvo();
       unsubMsgs();
     };
-  }, [conversationId]);
+  }, [conversationId, user?.uid]);
+
+  useEffect(() => {
+    return () => {
+      if (spellTimer.current) clearTimeout(spellTimer.current);
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+    };
+  }, []);
+
+  const handleTextChange = (text: string) => {
+    setInputText(text);
+
+    clearTimeout(spellTimer.current);
+    clearTimeout(previewTimer.current);
+
+    if (!text.trim()) {
+      setSpellMatches([]);
+      setTranslationPreview('');
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    spellTimer.current = setTimeout(async () => {
+      const matches = await checkSpelling(text, myLanguage);
+      setSpellMatches(matches);
+    }, 600);
+
+    setIsPreviewLoading(true);
+    previewTimer.current = setTimeout(async () => {
+      const preview = await translateText(text, myLanguage, otherLanguage);
+      setTranslationPreview(preview !== text ? preview : '');
+      setIsPreviewLoading(false);
+    }, 900);
+  };
+
+  const handleApplyCorrection = (match: SpellMatch, replacement: string) => {
+    const corrected = applyCorrection(inputText, match, replacement);
+    setInputText(corrected);
+    setSpellMatches([]);
+  };
 
   const handleSend = async () => {
     const text = inputText.trim();
     if (!text || !user || !conversationId || conversation?.status !== 'active') return;
     setInputText('');
+    setSpellMatches([]);
+    setTranslationPreview('');
+    setIsPreviewLoading(false);
+    clearTimeout(spellTimer.current);
+    clearTimeout(previewTimer.current);
     setSending(true);
     try {
       const translated = await translateText(text, myLanguage, otherLanguage);
@@ -233,6 +284,44 @@ export function ConversationScreen({ route, navigation }: any) {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
+        {/* Translation preview strip */}
+        {(translationPreview || isPreviewLoading) && conversation?.status === 'active' && (
+          <View style={[styles.previewStrip, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <FlagEmoji countryCode={otherLang?.countryCode ?? 'US'} size={13} />
+            {isPreviewLoading ? (
+              <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginLeft: 6 }} />
+            ) : (
+              <Text style={[styles.previewText, { color: colors.textSecondary }]} numberOfLines={2}>
+                {translationPreview}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Spell check suggestions */}
+        {spellMatches.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.suggestionsRow, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
+            contentContainerStyle={styles.suggestionsContent}
+          >
+            {spellMatches.flatMap((match, i) =>
+              match.replacements.map((rep, j) => (
+                <TouchableOpacity
+                  key={`${i}-${j}`}
+                  style={[styles.suggestionChip, { backgroundColor: colors.surfaceHighlight }]}
+                  onPress={() => handleApplyCorrection(match, rep)}
+                >
+                  <Text style={[styles.suggestionOld, { color: colors.textSecondary }]}>{match.word}</Text>
+                  <Ionicons name="arrow-forward" size={10} color={colors.textSecondary} />
+                  <Text style={[styles.suggestionNew, { color: colors.text }]}>{rep}</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        )}
+
         {/* Input bar */}
         <View
           style={[
@@ -250,29 +339,26 @@ export function ConversationScreen({ route, navigation }: any) {
               placeholder={`Type in ${myLang?.name || 'your language'}...`}
               placeholderTextColor={colors.textSecondary}
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleTextChange}
               multiline
               onSubmitEditing={handleSend}
             />
           </View>
-          <TouchableOpacity onPress={handleSend} disabled={sending || !inputText.trim()}>
-            <View
-              style={[
-                styles.sendBtn,
-                { backgroundColor: inputText.trim() && !sending ? '#007AFF' : colors.surface },
-              ]}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color={colors.textSecondary} />
-              ) : (
-                <Ionicons
-                  name="send"
-                  size={16}
-                  color={inputText.trim() ? '#FFF' : colors.textSecondary}
-                />
-              )}
+          {inputText.trim() ? (
+            <TouchableOpacity onPress={handleSend} disabled={sending}>
+              <View style={[styles.actionBtn2, { backgroundColor: sending ? colors.surface : '#007AFF' }]}>
+                {sending ? (
+                  <ActivityIndicator size="small" color={colors.textSecondary} />
+                ) : (
+                  <Ionicons name="send" size={16} color="#FFF" />
+                )}
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.actionBtn2, { backgroundColor: colors.surface }]}>
+              <Ionicons name="mic" size={20} color={colors.textSecondary} />
             </View>
-          </TouchableOpacity>
+          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -388,11 +474,52 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   input: { fontSize: 16, lineHeight: 20 },
-  sendBtn: {
+  actionBtn2: {
     width: 40,
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  previewStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  previewText: {
+    flex: 1,
+    fontSize: 13,
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  suggestionsRow: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    maxHeight: 48,
+  },
+  suggestionsContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  suggestionOld: {
+    fontSize: 13,
+    textDecorationLine: 'line-through',
+  },
+  suggestionNew: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

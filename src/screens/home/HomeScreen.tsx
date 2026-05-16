@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  ScrollView,
   Image,
   Dimensions,
 } from 'react-native';
@@ -14,7 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LanguagePickerModal } from '../../components/common/LanguagePickerModal';
 import { getLanguageByCode, type Language } from '../../constants/languages';
 import { Routes } from '../../constants/routes';
-import { createConversation } from '../../services/firestore';
+import { createConversation, subscribeToConversations, type Conversation } from '../../services/firestore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -26,7 +27,15 @@ export function HomeScreen({ navigation }: any) {
   const [showTheirLangPicker, setShowTheirLangPicker] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [recentConvos, setRecentConvos] = useState<Conversation[]>([]);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (!user) return;
+    return subscribeToConversations(user.uid, (convos) => {
+      setRecentConvos(convos.slice(0, 5));
+    });
+  }, [user?.uid]);
 
   const myLang = getLanguageByCode(myLanguage);
   const theirLang = getLanguageByCode(theirLanguage);
@@ -193,6 +202,41 @@ export function HomeScreen({ navigation }: any) {
           </>
         )}
       </View>
+
+      {/* Recent conversations */}
+      {recentConvos.length > 0 && (
+        <View style={styles.recentSection}>
+          <Text style={styles.recentLabel}>Recent</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentList}>
+            {recentConvos.map((convo) => {
+              const otherUid = convo.participants.find((p) => p !== user?.uid);
+              const myLangCode = (user?.uid && convo.participantLanguages[user.uid]) || 'en';
+              const otherLangCode = (otherUid && convo.participantLanguages[otherUid]) || convo.expectedOtherLanguage || 'en';
+              const myL = getLanguageByCode(myLangCode);
+              const otherL = getLanguageByCode(otherLangCode);
+              const isWaiting = convo.status === 'waiting';
+              return (
+                <TouchableOpacity
+                  key={convo.id}
+                  style={[styles.recentChip, isWaiting && styles.recentChipWaiting]}
+                  onPress={() =>
+                    navigation.navigate(
+                      isWaiting ? Routes.Waiting : Routes.Conversation,
+                      isWaiting
+                        ? { conversationId: convo.id, inviteCode: convo.inviteCode, myLanguage: myLangCode }
+                        : { conversationId: convo.id },
+                    )
+                  }
+                >
+                  <FlagEmoji countryCode={myL?.countryCode ?? 'US'} size={15} />
+                  <Ionicons name={isWaiting ? 'time-outline' : 'arrow-forward'} size={11} color="rgba(255,255,255,0.7)" />
+                  <FlagEmoji countryCode={otherL?.countryCode ?? 'US'} size={15} />
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Ad banner — 100px pinned to bottom */}
       <View style={[styles.adBanner, { paddingBottom: insets.bottom }]}>
@@ -371,6 +415,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '500' },
+
+  /* ── Recent conversations ── */
+  recentSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  recentLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  recentList: {
+    gap: 8,
+    flexDirection: 'row',
+  },
+  recentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  recentChipWaiting: {
+    borderColor: 'rgba(255,165,0,0.5)',
+    backgroundColor: 'rgba(255,165,0,0.15)',
+  },
 
   /* ── Ad banner ── */
   adBanner: {

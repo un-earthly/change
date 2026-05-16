@@ -1,82 +1,120 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { FlagEmoji } from '../../components/common/FlagEmoji';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
-import { getUserMessages, type Message } from '../../services/firestore';
+import { subscribeToConversations, type Conversation } from '../../services/firestore';
+import { Routes } from '../../constants/routes';
 
 function formatTime(ts: any): string {
   if (!ts) return '';
   const date = ts.toDate ? ts.toDate() : new Date(ts);
   const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return isToday ? `Today at ${timeStr}` : date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export function HistoryScreen({ navigation }: any) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [history, setHistory] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    getUserMessages(user.uid).then((msgs) => {
-      setHistory(msgs);
+    return subscribeToConversations(user.uid, (convos) => {
+      setConversations(convos);
       setLoading(false);
     });
-  }, [user]);
+  }, [user?.uid]);
 
-  const renderItem = ({ item, index }: { item: Message; index: number }) => {
-    const fromLang = getLanguageByCode(item.sourceLanguage);
-    const toLang = getLanguageByCode(item.targetLanguage);
-    const isFirst = index === 0;
+  const handleOpen = (convo: Conversation) => {
+    const myLangCode = (user?.uid && convo.participantLanguages[user.uid]) || 'en';
+    if (convo.status === 'waiting') {
+      navigation.navigate(Routes.Waiting, {
+        conversationId: convo.id,
+        inviteCode: convo.inviteCode,
+        myLanguage: myLangCode,
+      });
+    } else {
+      navigation.navigate(Routes.Conversation, { conversationId: convo.id });
+    }
+  };
+
+  const renderItem = ({ item }: { item: Conversation }) => {
+    const otherUid = item.participants.find((p) => p !== user?.uid);
+    const myLangCode = (user?.uid && item.participantLanguages[user.uid]) || 'en';
+    const otherLangCode =
+      (otherUid && item.participantLanguages[otherUid]) ||
+      item.expectedOtherLanguage ||
+      'en';
+    const myL = getLanguageByCode(myLangCode);
+    const otherL = getLanguageByCode(otherLangCode);
+    const isWaiting = item.status === 'waiting';
+    const lastText = item.lastMessage?.text;
 
     return (
-      <View
-        style={[
-          styles.item,
-          isFirst ? styles.itemHighlighted : [styles.itemPlain, { borderBottomColor: colors.border }],
-        ]}
+      <TouchableOpacity
+        style={[styles.item, { borderBottomColor: colors.border }]}
+        onPress={() => handleOpen(item)}
+        activeOpacity={0.7}
       >
-        {/* Row 1: original text + language pair */}
-        <View style={styles.row}>
-          <Text
-            style={[styles.originalText, { color: isFirst ? '#FFFFFF' : colors.text }]}
-            numberOfLines={1}
-          >
-            {item.originalText}
-          </Text>
-          <View style={styles.langPair}>
-            <Text style={[styles.langName, { color: isFirst ? 'rgba(255,255,255,0.9)' : colors.textSecondary }]}>
-              {fromLang?.name}
-            </Text>
-            <View style={styles.swapCircle}>
-              <Ionicons name="swap-horizontal" size={9} color="#FFFFFF" />
-            </View>
-            <Text style={[styles.langName, { color: isFirst ? 'rgba(255,255,255,0.9)' : colors.textSecondary }]}>
-              {toLang?.name}
-            </Text>
-          </View>
+        {/* Flag pair */}
+        <View style={[styles.flagsBox, { backgroundColor: colors.surface }]}>
+          <FlagEmoji countryCode={myL?.countryCode ?? 'US'} size={18} />
+          <Ionicons name="arrow-forward" size={10} color={colors.textSecondary} />
+          <FlagEmoji countryCode={otherL?.countryCode ?? 'US'} size={18} />
         </View>
 
-        {/* Row 2: translated text + timestamp */}
-        <View style={styles.row}>
-          <Text
-            style={[styles.translatedText, { color: isFirst ? 'rgba(255,255,255,0.8)' : colors.textSecondary }]}
-            numberOfLines={1}
-          >
-            {item.translatedText}
-          </Text>
-          <Text style={[styles.timeText, { color: isFirst ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
-            {formatTime(item.createdAt)}
-          </Text>
+        {/* Content */}
+        <View style={styles.content}>
+          <View style={styles.topRow}>
+            <Text style={[styles.langLine, { color: colors.text }]}>
+              {myL?.name ?? myLangCode} → {otherL?.name ?? otherLangCode}
+            </Text>
+            <Text style={[styles.time, { color: colors.textSecondary }]}>
+              {formatTime(item.updatedAt)}
+            </Text>
+          </View>
+          {isWaiting ? (
+            <View style={styles.waitingRow}>
+              <Ionicons name="time-outline" size={12} color="#FF9500" />
+              <Text style={[styles.waitingText, { color: '#FF9500' }]}>
+                Waiting · Code: {item.inviteCode}
+              </Text>
+            </View>
+          ) : lastText ? (
+            <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={1}>
+              {lastText}
+            </Text>
+          ) : (
+            <Text style={[styles.preview, { color: colors.textSecondary }]}>
+              No messages yet
+            </Text>
+          )}
         </View>
-      </View>
+
+        <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+      </TouchableOpacity>
     );
   };
 
@@ -86,18 +124,21 @@ export function HistoryScreen({ navigation }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>History</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Conversations</Text>
       </View>
 
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color="#007AFF" />
-      ) : history.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          No translation history yet.
-        </Text>
+      ) : conversations.length === 0 ? (
+        <View style={styles.empty}>
+          <Ionicons name="chatbubbles-outline" size={44} color={colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            No conversations yet.{'\n'}Start one from the home screen.
+          </Text>
+        </View>
       ) : (
         <FlatList
-          data={history}
+          data={conversations}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -119,59 +160,42 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 32, justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '600' },
-  list: { paddingHorizontal: 16, paddingBottom: 24 },
-  emptyText: { textAlign: 'center', marginTop: 60, fontSize: 16 },
-
-  item: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 6,
-  },
-  itemHighlighted: {
-    backgroundColor: '#007AFF',
-    borderRadius: 14,
-    marginBottom: 4,
-  },
-  itemPlain: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  originalText: {
+  list: { paddingBottom: 24 },
+  empty: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  translatedText: {
-    flex: 1,
-    fontSize: 13,
-  },
-  timeText: {
-    fontSize: 12,
-    flexShrink: 0,
-  },
-
-  langPair: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    flexShrink: 0,
-  },
-  langName: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  swapCircle: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 40,
   },
+  emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
+
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  flagsBox: {
+    width: 60,
+    height: 40,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  content: { flex: 1, gap: 4 },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  langLine: { fontSize: 14, fontWeight: '600' },
+  time: { fontSize: 12 },
+  preview: { fontSize: 13, lineHeight: 18 },
+  waitingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  waitingText: { fontSize: 13 },
 });
