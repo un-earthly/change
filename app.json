@@ -31,7 +31,14 @@
           "image": "./assets/splash-icon.png"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow unbounded to access your microphone for voice messages",
+          "speechRecognitionPermission": "Allow unbounded to use speech recognition to transcribe your voice"
+        }
+      ]
     ]
   }
 }

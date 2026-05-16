@@ -10,7 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
+import Voice, { SpeechResultsEvent } from '@react-native-voice/voice';
+import { detectScript } from '../../services/language-detect';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,9 +45,15 @@ export function ConversationScreen({ route, navigation }: any) {
   const [translationPreview, setTranslationPreview] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [spellMatches, setSpellMatches] = useState<SpellMatch[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [voicePartial, setVoicePartial] = useState('');
+  const [langMismatch, setLangMismatch] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const spellTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const myLanguageRef = useRef('en');
   const insets = useSafeAreaInsets();
 
   // Derive languages from conversation document
@@ -73,6 +82,64 @@ export function ConversationScreen({ route, navigation }: any) {
       if (previewTimer.current) clearTimeout(previewTimer.current);
     };
   }, []);
+
+  useEffect(() => { myLanguageRef.current = myLanguage; }, [myLanguage]);
+
+  useEffect(() => {
+    Voice.onSpeechResults = (e: SpeechResultsEvent) => {
+      const text = e.value?.[0] ?? '';
+      if (text) {
+        setInputText(text);
+        handleTextChange(text);
+        const detected = detectScript(text);
+        const base = myLanguageRef.current.split('-')[0].split('_')[0];
+        if (detected && detected !== base && detected !== 'en') {
+          setLangMismatch(true);
+          setTimeout(() => setLangMismatch(false), 3500);
+        }
+      }
+      setIsRecording(false);
+      setVoicePartial('');
+    };
+    Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
+      setVoicePartial(e.value?.[0] ?? '');
+    };
+    Voice.onSpeechError = () => {
+      setIsRecording(false);
+      setVoicePartial('');
+    };
+    Voice.onSpeechEnd = () => { /* results arrive via onSpeechResults */ };
+    return () => { Voice.destroy().then(Voice.removeAllListeners); };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      setVoicePartial('');
+      setIsRecording(true);
+      pulseLoop.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.4, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      pulseLoop.current.start();
+      const lang = getLanguageByCode(myLanguageRef.current);
+      const locale = lang ? `${lang.code}-${lang.countryCode}` : 'en-US';
+      await Voice.start(locale);
+    } catch {
+      pulseLoop.current?.stop();
+      pulseAnim.setValue(1);
+      setIsRecording(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    pulseLoop.current?.stop();
+    pulseAnim.setValue(1);
+    setIsRecording(false);
+    setVoicePartial('');
+    try { await Voice.stop(); } catch { /* ignore */ }
+  };
 
   const handleTextChange = (text: string) => {
     setInputText(text);
@@ -180,16 +247,16 @@ export function ConversationScreen({ route, navigation }: any) {
             ]}
           >
             <TouchableOpacity
-              style={styles.actionBtn}
+              style={[styles.actionBtn, { borderColor: colors.border }]}
               onPress={() => Speech.speak(speakText, { language: speakLang })}
             >
-              <Ionicons name="play" size={14} color={colors.textSecondary} />
+              <Ionicons name="play-outline" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.actionBtn}
+              style={[styles.actionBtn, { borderColor: colors.border }]}
               onPress={() => Clipboard.setString(speakText)}
             >
-              <Ionicons name="copy" size={14} color={colors.textSecondary} />
+              <Ionicons name="copy-outline" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -322,6 +389,14 @@ export function ConversationScreen({ route, navigation }: any) {
           </ScrollView>
         )}
 
+        {/* Lang mismatch warning */}
+        {langMismatch && (
+          <View style={styles.mismatchBanner}>
+            <Ionicons name="warning-outline" size={14} color="#FFF" />
+            <Text style={styles.mismatchText}>Detected different language — check your selection</Text>
+          </View>
+        )}
+
         {/* Input bar */}
         <View
           style={[
@@ -333,18 +408,34 @@ export function ConversationScreen({ route, navigation }: any) {
             },
           ]}
         >
-          <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground }]}>
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder={`Type in ${myLang?.name || 'your language'}...`}
-              placeholderTextColor={colors.textSecondary}
-              value={inputText}
-              onChangeText={handleTextChange}
-              multiline
-              onSubmitEditing={handleSend}
-            />
-          </View>
-          {inputText.trim() ? (
+          {isRecording ? (
+            <TouchableOpacity
+              style={[styles.inputWrapper, styles.recordingArea, { backgroundColor: colors.inputBackground }]}
+              onPress={stopRecording}
+              activeOpacity={0.85}
+            >
+              <Animated.View style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]} />
+              <Text
+                style={[styles.recordingText, { color: voicePartial ? colors.text : colors.textSecondary }]}
+                numberOfLines={2}
+              >
+                {voicePartial || 'Listening...'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.inputWrapper, { backgroundColor: colors.inputBackground }]}>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder={`Type in ${myLang?.name || 'your language'}...`}
+                placeholderTextColor={colors.textSecondary}
+                value={inputText}
+                onChangeText={handleTextChange}
+                multiline
+                onSubmitEditing={handleSend}
+              />
+            </View>
+          )}
+          {inputText.trim() && !isRecording ? (
             <TouchableOpacity onPress={handleSend} disabled={sending}>
               <View style={[styles.actionBtn2, { backgroundColor: sending ? colors.surface : '#007AFF' }]}>
                 {sending ? (
@@ -355,9 +446,11 @@ export function ConversationScreen({ route, navigation }: any) {
               </View>
             </TouchableOpacity>
           ) : (
-            <View style={[styles.actionBtn2, { backgroundColor: colors.surface }]}>
-              <Ionicons name="mic" size={20} color={colors.textSecondary} />
-            </View>
+            <TouchableOpacity onPress={isRecording ? stopRecording : startRecording}>
+              <View style={[styles.actionBtn2, { backgroundColor: isRecording ? '#FF3B30' : colors.surface }]}>
+                <Ionicons name={isRecording ? 'stop' : 'mic'} size={20} color={isRecording ? '#FFF' : colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -457,7 +550,45 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: 4,
   },
-  actionBtn: { padding: 2 },
+  actionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF3B30',
+  },
+  recordingText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  mismatchBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#FF9500',
+  },
+  mismatchText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',

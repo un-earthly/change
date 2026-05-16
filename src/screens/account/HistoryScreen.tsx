@@ -13,14 +13,17 @@ import { FlagEmoji } from '../../components/common/FlagEmoji';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getLanguageByCode } from '../../constants/languages';
-import { subscribeToConversations, type Conversation } from '../../services/firestore';
+import {
+  subscribeToConversations,
+  getUserProfile,
+  type Conversation,
+} from '../../services/firestore';
 import { Routes } from '../../constants/routes';
 
 function formatTime(ts: any): string {
   if (!ts) return '';
   const date = ts.toDate ? ts.toDate() : new Date(ts);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = Date.now() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
@@ -38,12 +41,30 @@ export function HistoryScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nameMap, setNameMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) return;
     return subscribeToConversations(user.uid, (convos) => {
       setConversations(convos);
       setLoading(false);
+
+      // Fetch display names for any new participants we haven't loaded yet
+      const newUids = convos
+        .flatMap((c) => c.participants)
+        .filter((uid) => uid !== user.uid && !nameMap[uid]);
+      const unique = [...new Set(newUids)];
+      if (unique.length === 0) return;
+
+      Promise.all(unique.map((uid) => getUserProfile(uid).then((p) => ({ uid, name: p?.displayName ?? null }))))
+        .then((results) => {
+          setNameMap((prev) => {
+            const next = { ...prev };
+            results.forEach(({ uid, name }) => { next[uid] = name ?? 'Unknown'; });
+            return next;
+          });
+        })
+        .catch(() => {});
     });
   }, [user?.uid]);
 
@@ -70,6 +91,9 @@ export function HistoryScreen({ navigation }: any) {
     const myL = getLanguageByCode(myLangCode);
     const otherL = getLanguageByCode(otherLangCode);
     const isWaiting = item.status === 'waiting';
+
+    const otherName = (otherUid && nameMap[otherUid]) || (otherUid ? '...' : 'Unknown');
+    const myName = user?.displayName || 'You';
     const lastText = item.lastMessage?.text;
 
     return (
@@ -78,27 +102,42 @@ export function HistoryScreen({ navigation }: any) {
         onPress={() => handleOpen(item)}
         activeOpacity={0.7}
       >
-        {/* Flag pair */}
-        <View style={[styles.flagsBox, { backgroundColor: colors.surface }]}>
-          <FlagEmoji countryCode={myL?.countryCode ?? 'US'} size={18} />
-          <Ionicons name="arrow-forward" size={10} color={colors.textSecondary} />
-          <FlagEmoji countryCode={otherL?.countryCode ?? 'US'} size={18} />
+        {/* Avatar: other person's flag */}
+        <View style={[styles.avatar, { backgroundColor: colors.surface }]}>
+          <FlagEmoji countryCode={otherL?.countryCode ?? 'US'} size={22} />
         </View>
 
-        {/* Content */}
         <View style={styles.content}>
+          {/* Names row */}
           <View style={styles.topRow}>
-            <Text style={[styles.langLine, { color: colors.text }]}>
-              {myL?.name ?? myLangCode} → {otherL?.name ?? otherLangCode}
+            <Text style={[styles.names, { color: colors.text }]} numberOfLines={1}>
+              {myName}
+              <Text style={{ color: colors.textSecondary }}> → </Text>
+              {otherName}
             </Text>
             <Text style={[styles.time, { color: colors.textSecondary }]}>
               {formatTime(item.updatedAt)}
             </Text>
           </View>
+
+          {/* Language pair */}
+          <View style={styles.langRow}>
+            <FlagEmoji countryCode={myL?.countryCode ?? 'US'} size={12} />
+            <Text style={[styles.langText, { color: colors.textSecondary }]}>
+              {myL?.name ?? myLangCode}
+            </Text>
+            <Ionicons name="arrow-forward" size={10} color={colors.textSecondary} />
+            <FlagEmoji countryCode={otherL?.countryCode ?? 'US'} size={12} />
+            <Text style={[styles.langText, { color: colors.textSecondary }]}>
+              {otherL?.name ?? otherLangCode}
+            </Text>
+          </View>
+
+          {/* Last message / status */}
           {isWaiting ? (
-            <View style={styles.waitingRow}>
+            <View style={styles.statusRow}>
               <Ionicons name="time-outline" size={12} color="#FF9500" />
-              <Text style={[styles.waitingText, { color: '#FF9500' }]}>
+              <Text style={[styles.statusText, { color: '#FF9500' }]}>
                 Waiting · Code: {item.inviteCode}
               </Text>
             </View>
@@ -107,9 +146,7 @@ export function HistoryScreen({ navigation }: any) {
               {lastText}
             </Text>
           ) : (
-            <Text style={[styles.preview, { color: colors.textSecondary }]}>
-              No messages yet
-            </Text>
+            <Text style={[styles.preview, { color: colors.textSecondary }]}>No messages yet</Text>
           )}
         </View>
 
@@ -121,9 +158,6 @@ export function HistoryScreen({ navigation }: any) {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
-        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Conversations</Text>
       </View>
 
@@ -133,7 +167,7 @@ export function HistoryScreen({ navigation }: any) {
         <View style={styles.empty}>
           <Ionicons name="chatbubbles-outline" size={44} color={colors.textSecondary} />
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No conversations yet.{'\n'}Start one from the home screen.
+            No conversations yet.{'\n'}Start one from the Home tab.
           </Text>
         </View>
       ) : (
@@ -152,14 +186,10 @@ export function HistoryScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    gap: 8,
   },
-  backBtn: { width: 32, justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600' },
+  headerTitle: { fontSize: 22, fontWeight: '700' },
   list: { paddingBottom: 24 },
   empty: {
     flex: 1,
@@ -178,24 +208,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },
-  flagsBox: {
-    width: 60,
-    height: 40,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
-    gap: 4,
+    alignItems: 'center',
   },
-  content: { flex: 1, gap: 4 },
+  content: { flex: 1, gap: 3 },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
-  langLine: { fontSize: 14, fontWeight: '600' },
-  time: { fontSize: 12 },
+  names: { flex: 1, fontSize: 15, fontWeight: '600' },
+  time: { fontSize: 12, flexShrink: 0 },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  langText: { fontSize: 12 },
   preview: { fontSize: 13, lineHeight: 18 },
-  waitingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  waitingText: { fontSize: 13 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statusText: { fontSize: 13 },
 });

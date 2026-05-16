@@ -10,6 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
   getDocs,
+  getDoc,
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -50,6 +51,16 @@ export interface PublicUserProfile {
   preferredLanguage: string;
   email: string | null;
   phone?: string | null;
+}
+
+export async function getUserProfile(uid: string): Promise<{ displayName: string | null } | null> {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) return null;
+    return { displayName: snap.data().displayName ?? null };
+  } catch {
+    return null;
+  }
 }
 
 export async function searchUserByEmail(email: string): Promise<PublicUserProfile | null> {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { registerForPushNotifications } from '../services/notifications';
+import { loadModel } from '../services/local-llm';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(newUser);
         }
         registerForPushNotifications(fbUser.uid).catch(() => {});
+        loadModel().catch(() => {}); // load SLM in background if already downloaded
       } else {
         setUser(null);
       }

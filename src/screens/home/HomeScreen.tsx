@@ -238,8 +238,8 @@ export function HomeScreen({ navigation }: any) {
         </View>
       )}
 
-      {/* Ad banner — 100px pinned to bottom */}
-      <View style={[styles.adBanner, { paddingBottom: insets.bottom }]}>
+      {/* Ad banner — pinned above tab bar */}
+      <View style={styles.adBanner}>
         <Text style={styles.adText}>Test Ad</Text>
       </View>
 
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
 
   /* ── Ad banner ── */
   adBanner: {
-    height: 100,
+    height: 60,
     backgroundColor: 'rgba(0,0,0,0.5)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
